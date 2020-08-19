@@ -37,11 +37,10 @@ int main(int argc, char** argv) {
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,
             " number   : /-?[0-9]+/ ; \
-              operator : '+' | '-' | '*' | '/' ; \
+              operator : '+' | '-' | '*' | '/' | '%' | \"add\" | \"sub\" | \"mul\" | \"div\" ; \
               expr     : <number> | '(' <operator> <expr>+ ')' ; \
               blisp    : /^/ <operator> <expr>+ /$/ ; \
             ", Number, Operator, Expr, Blisp);
-
 
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
