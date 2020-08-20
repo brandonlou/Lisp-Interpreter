@@ -29,6 +29,7 @@ void add_history(char* unused) {}
 
 // Use operator string to see which operation to perform
 double eval_op(double x, char* op, double y) {
+
     if(strcmp(op, "+") == 0 || strcmp(op, "add") == 0) {
         return x + y;
     
@@ -72,8 +73,13 @@ double eval(mpc_ast_t* t) {
     // Store the third child
     double x = eval(t->children[2]);
 
+    // Minus operator only one argument
+    if(t->children_num <= 4 && strcmp(op, "-") == 0) {
+        return -x;
+    }
+
     // Iterate through remaining children and combine
-    int i = 3;
+    size_t i = 3;
     while(strstr(t->children[i]->tag, "expr")) {
         x = eval_op(x, op, eval(t->children[i]));
         ++i;
