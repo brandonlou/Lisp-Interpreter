@@ -28,18 +28,21 @@ void add_history(char* unused) {}
 
 // Use operator string to see which operation to perform
 long eval_op(long x, char* op, long y) {
-    if(strcmp(op, "+") == 0) {
+    if(strcmp(op, "+") == 0 || strcmp(op, "add" == 0)) {
         return x + y;
     
-    } else if(strcmp(op, "-") == 0) {
+    } else if(strcmp(op, "-") == 0 || strcmp(op, "sub" == 0)) {
         return x - y;
     
-    } else if(strcmp(op, "*") == 0) {
+    } else if(strcmp(op, "*") == 0 || strcmp(op, "mul" == 0)) {
         return x * y;
     
-    } else if(strcmp(op, "/") == 0) {
+    } else if(strcmp(op, "/") == 0 || strcmp(op, "div" == 0)) {
         return x / y;
     
+    } else if(strcmp(op, "%" == 0)) {
+        return x % y;
+
     } else {
         return 0;
     }
