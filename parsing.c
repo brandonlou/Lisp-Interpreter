@@ -90,54 +90,65 @@ void println_lval(lval v) {
 
 
 // Use operator string to see which operation to perform
-double eval_op(double x, char* op, double y) {
+lval eval_op(lval x, char* op, lval y) {
 
+    // If either x or y is an error then return it
+    if(x.type == LVAL_ERR) {
+        return x;
+    } else if(y.type == LVAL_ERR) {
+        return y;
+    }
+
+    // Otherwise, do the math on the numbers
     if(strcmp(op, "+") == 0 || strcmp(op, "add") == 0) {
-        return x + y;
+        return lval_num(x.num + y.num);
     
     } else if(strcmp(op, "-") == 0 || strcmp(op, "sub") == 0) {
-        return x - y;
+        return lval_num(x.num - y.num);
     
     } else if(strcmp(op, "*") == 0 || strcmp(op, "mul") == 0) {
-        return x * y;
+        return lval_num(x.num * y.num);
     
     } else if(strcmp(op, "/") == 0 || strcmp(op, "div") == 0) {
-        return x / y;
+        return (y.num == 0) ? lval_err(LERR_DIV_ZERO) : lval_num(x.num / y.num);
     
     } else if(strcmp(op, "%") == 0) {
-        return (int)x % (int)y;
+        return lval_num((int)x.num % (int)y.num);
 
     } else if(strcmp(op, "^") == 0) {
-        return pow(x, y);
+        return lval_num(pow(x.num, y.num));
 
     } else if(strcmp(op, "min") == 0) {
-        return (x < y) ? x : y;
+        return (x.num < y.num) ? lval_num(x.num) : lval_num(y.num);
 
     } else if(strcmp(op, "max") == 0) {
-        return (x > y) ? x : y;
+        return (x.num > y.num) ? lval_num(x.num) : lval_num(y.num);
 
     } else {
-        return 0;
+        return lval_err(LERR_BAD_OP);
     }
 }
 
 
-double eval(mpc_ast_t* t) {
+lval eval(mpc_ast_t* t) {
     
-    // If tagged as number, return it directly as an int
+    // Check if tagged as number
     if(strstr(t->tag, "number")) {
-        return atof(t->contents);
+        // Check if error in converting string to number
+        errno = 0;
+        double x = strtod(t->contents, NULL);
+        return (errno == ERANGE)? lval_err(LERR_BAD_NUM) : lval_num(x);
     }
 
     // Operator is always second child
     char* op = t->children[1]->contents;
 
     // Store the third child
-    double x = eval(t->children[2]);
+    lval x = eval(t->children[2]);
 
     // Minus operator only one argument
     if(t->children_num <= 4 && strcmp(op, "-") == 0) {
-        return -x;
+        return lval_num(-x.num);
     }
 
     // Iterate through remaining children and combine
@@ -185,8 +196,8 @@ int main(int argc, char** argv) {
         mpc_result_t r;
         if(mpc_parse("<stdin>", input, Blisp, &r)) {
             // On success, evaluate and print the result.
-            double result = eval(r.output);
-            printf("%g\n", result);
+            lval result = eval(r.output);
+            println_lval(result);
             mpc_ast_delete(r.output);
         } else {
             // Otherwise print error
