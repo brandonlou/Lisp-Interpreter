@@ -27,6 +27,68 @@ void add_history(char* unused) {}
 #include <editline/readline.h>
 #endif
 
+// Possible lval types
+enum { LVAL_NUM, LVAL_ERR };
+
+// Possible error types
+enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
+
+// "Lisp Value" to represent a number or error
+typedef struct {
+    int type;
+    double num;
+    int err;
+} lval;
+
+// Creates new lval number type
+lval lval_num(double x) {
+    lval v;
+    v.type = LVAL_NUM;
+    v.num = x;
+    return v;
+}
+
+// Creates new lval error type
+lval lval_err(int x) {
+    lval v;
+    v.type = LVAL_ERR;
+    v.err = x;
+    return v;
+}
+
+// Prints an lval
+void print_lval(lval v) {
+    switch(v.type) {
+        case LVAL_NUM:
+            printf("%g", v.num);
+            break;
+        case LVAL_ERR:
+            switch(v.err) {
+                case LERR_DIV_ZERO:
+                    printf("Error: Division by zero!");
+                    break;
+                case LERR_BAD_OP:
+                    printf("Error: Invalid operator!");
+                    break;
+                case LERR_BAD_NUM:
+                    printf("Error: Invalid number!");
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+// Prints an lval followed by a newline
+void println_lval(lval v) {
+    print_lval(v);
+    putchar('\n');
+}
+
+
 // Use operator string to see which operation to perform
 double eval_op(double x, char* op, double y) {
 
@@ -107,7 +169,7 @@ int main(int argc, char** argv) {
 
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
-    puts("Brandon says hello.");
+    puts("\" hello there 😶\" ");
     puts("Press Ctrl+c to Exit\n");
 
     // Infinite prompt
