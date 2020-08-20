@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "mpc.h"
@@ -27,21 +28,30 @@ void add_history(char* unused) {}
 #endif
 
 // Use operator string to see which operation to perform
-long eval_op(long x, char* op, long y) {
-    if(strcmp(op, "+") == 0 || strcmp(op, "add" == 0)) {
+double eval_op(double x, char* op, double y) {
+    if(strcmp(op, "+") == 0 || strcmp(op, "add") == 0) {
         return x + y;
     
-    } else if(strcmp(op, "-") == 0 || strcmp(op, "sub" == 0)) {
+    } else if(strcmp(op, "-") == 0 || strcmp(op, "sub") == 0) {
         return x - y;
     
-    } else if(strcmp(op, "*") == 0 || strcmp(op, "mul" == 0)) {
+    } else if(strcmp(op, "*") == 0 || strcmp(op, "mul") == 0) {
         return x * y;
     
-    } else if(strcmp(op, "/") == 0 || strcmp(op, "div" == 0)) {
+    } else if(strcmp(op, "/") == 0 || strcmp(op, "div") == 0) {
         return x / y;
     
-    } else if(strcmp(op, "%" == 0)) {
-        return x % y;
+    } else if(strcmp(op, "%") == 0) {
+        return (int)x % (int)y;
+
+    } else if(strcmp(op, "^") == 0) {
+        return pow(x, y);
+
+    } else if(strcmp(op, "min") == 0) {
+        return (x < y) ? x : y;
+
+    } else if(strcmp(op, "max") == 0) {
+        return (x > y) ? x : y;
 
     } else {
         return 0;
@@ -49,24 +59,24 @@ long eval_op(long x, char* op, long y) {
 }
 
 
-long eval(mpc_ast_t* t) {
+double eval(mpc_ast_t* t) {
     
     // If tagged as number, return it directly as an int
     if(strstr(t->tag, "number")) {
-        return atoi(t->contents);
+        return atof(t->contents);
     }
 
     // Operator is always second child
     char* op = t->children[1]->contents;
 
     // Store the third child
-    long x = eval(t->children[2]);
+    double x = eval(t->children[2]);
 
     // Iterate through remaining children and combine
     int i = 3;
     while(strstr(t->children[i]->tag, "expr")) {
         x = eval_op(x, op, eval(t->children[i]));
-        i++;
+        ++i;
     }
 
     return x;
@@ -84,7 +94,7 @@ int main(int argc, char** argv) {
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,
             " number   : /-?[0-9]+([.][0-9]+)?/ ; \
-              operator : '+' | '-' | '*' | '/' | '%' | \"add\" | \"sub\" | \"mul\" | \"div\" ; \
+              operator : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\"; \
               expr     : <number> | '(' <operator> <expr>+ ')' ; \
               blisp    : /^/ <operator> <expr>+ /$/ ; \
             ", Number, Operator, Expr, Blisp);
@@ -107,8 +117,8 @@ int main(int argc, char** argv) {
         mpc_result_t r;
         if(mpc_parse("<stdin>", input, Blisp, &r)) {
             // On success, evaluate and print the result.
-            long result = eval(r.output);
-            printf("%li\n", result);
+            double result = eval(r.output);
+            printf("%g\n", result);
             mpc_ast_delete(r.output);
         } else {
             // Otherwise print error
