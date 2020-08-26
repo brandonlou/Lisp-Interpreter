@@ -28,16 +28,23 @@ void add_history(char* unused) {}
 #endif
 
 // Possible lval types
-enum { LVAL_NUM, LVAL_ERR };
+enum lval_type {
+    LVAL_NUM = 0,
+    LVAL_ERR = 1
+};
 
 // Possible error types
-enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
+enum lval_err {
+    LERR_DIV_ZERO = 0,
+    LERR_BAD_OP = 1,
+    LERR_BAD_NUM = 2
+};
 
 // "Lisp Value" to represent a number or error
 typedef struct {
-    int type;
+    enum lval_type type;
     double num;
-    int err;
+    enum lval_err err;
 } lval;
 
 // Creates new lval number type
@@ -166,7 +173,8 @@ int main(int argc, char** argv) {
 
     // Create some parsers
     mpc_parser_t* Number = mpc_new("number");
-    mpc_parser_t* Operator = mpc_new("operator");
+    mpc_parser_t* Symbol = mpc_new("symbol");
+    mpc_parser_t* Sexpr = mpc_new("sexpr");
     mpc_parser_t* Expr = mpc_new("expr");
     mpc_parser_t* Blisp = mpc_new("blisp");
 
@@ -176,7 +184,7 @@ int main(int argc, char** argv) {
               operator : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\"; \
               expr     : <number> | '(' <operator> <expr>+ ')' ; \
               blisp    : /^/ <operator> <expr>+ /$/ ; \
-            ", Number, Operator, Expr, Blisp);
+            ", Number, Symbol, Sexpr, Expr, Blisp);
 
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
@@ -210,7 +218,7 @@ int main(int argc, char** argv) {
     }
 
     // Undefine and delete our parsers
-    mpc_cleanup(4, Number, Operator, Expr, Blisp);
+    mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Blisp);
 
     return 0;
 }
