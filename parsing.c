@@ -203,78 +203,147 @@ void lval_println(lval* v) {
     putchar('\n');
 }
 
-// Use operator string to see which operation to perform
-//lval eval_op(lval x, char* op, lval y) {
-//
-//    // If either x or y is an error then return it
-//    if(x.type == LVAL_ERR) {
-//        return x;
-//    } else if(y.type == LVAL_ERR) {
-//        return y;
-//    }
-//
-//    // Otherwise, do the math on the numbers
-//    if(strcmp(op, "+") == 0 || strcmp(op, "add") == 0) {
-//        return lval_num(x.num + y.num);
-//    
-//    } else if(strcmp(op, "-") == 0 || strcmp(op, "sub") == 0) {
-//        return lval_num(x.num - y.num);
-//    
-//    } else if(strcmp(op, "*") == 0 || strcmp(op, "mul") == 0) {
-//        return lval_num(x.num * y.num);
-//    
-//    } else if(strcmp(op, "/") == 0 || strcmp(op, "div") == 0) {
-//        return (y.num == 0) ? lval_err(LERR_DIV_ZERO) : lval_num(x.num / y.num);
-//    
-//    } else if(strcmp(op, "%") == 0) {
-//        return lval_num((int)x.num % (int)y.num);
-//
-//    } else if(strcmp(op, "^") == 0) {
-//        return lval_num(pow(x.num, y.num));
-//
-//    } else if(strcmp(op, "min") == 0) {
-//        return (x.num < y.num) ? lval_num(x.num) : lval_num(y.num);
-//
-//    } else if(strcmp(op, "max") == 0) {
-//        return (x.num > y.num) ? lval_num(x.num) : lval_num(y.num);
-//
-//    } else {
-//        return lval_err(LERR_BAD_OP);
-//    }
-//}
+// Extracts a single element from an s-expr at index i and shifts the rest of the list backwards
+lval* lval_pop(lval* v, int i) {
+    // Find the item at index i
+    lval* x = v->cell[i];
 
+    // Shift memory after the item at i is over the top
+    memmove(&v->cell[i], &v->cell[i + 1], sizeof(lval*) * (v->count - i - 1));
 
-//lval eval(mpc_ast_t* t) {
-//    
-//    // Check if tagged as number
-//    if(strstr(t->tag, "number")) {
-//        // Check if error in converting string to number
-//        errno = 0;
-//        double x = strtod(t->contents, NULL);
-//        return (errno == ERANGE)? lval_err(LERR_BAD_NUM) : lval_num(x);
-//    }
-//
-//    // Operator is always second child
-//    char* op = t->children[1]->contents;
-//
-//    // Store the third child
-//    lval x = eval(t->children[2]);
-//
-//    // Minus operator only one argument
-//    if(t->children_num <= 4 && strcmp(op, "-") == 0) {
-//        return lval_num(-x.num);
-//    }
-//
-//    // Iterate through remaining children and combine
-//    size_t i = 3;
-//    while(strstr(t->children[i]->tag, "expr")) {
-//        x = eval_op(x, op, eval(t->children[i]));
-//        ++i;
-//    }
-//
-//    return x;
-//}
+    // Decrease the count of items in the list
+    --(v->count);
 
+    // Reallocate the memory used
+    v->cell = realloc(v->cell, sizeof(lval*) * v->count);
+
+    return x;
+}
+
+// Take element i from the list and delete the rest
+lval* lval_take(lval* v, int i) {
+    lval* x = lval_pop(v, i);
+    lval_del(v);
+    return x;
+}
+
+// Perform operation op on all lvals in the list.
+lval* builtin_op(lval* a, char* op) {
+
+    // Ensure all arguments are numbers
+    for(int i = 0; i < a->count; ++i) {
+        if(a->cell[i]->type != LVAL_NUM) {
+            lval_del(a);
+            return lval_err("Cannot operate on non-number!");
+        }
+    }
+
+    // Pop the first element
+    lval* x = lval_pop(a, 0);
+
+    // If no arguments and subtraction, then perform unary negation
+    if((strcmp(op, "-") == 0) && a->count == 0) {
+        x->num = -x->num;
+    }
+
+    // While there are still elements remaining
+    while(a->count > 0) {
+
+        // Pop the next element
+        lval* y = lval_pop(a, 0);
+    
+        if(strcmp(op, "+") == 0 || strcmp(op, "add") == 0) {
+            x->num = x->num + y->num;
+
+        } else if(strcmp(op, "-") == 0 || strcmp(op, "sub") == 0) {
+            x->num = x->num - y->num;
+
+        } else if(strcmp(op, "*") == 0 || strcmp(op, "mul") == 0) {
+            x->num = x->num * y->num;
+
+        } else if(strcmp(op, "/") == 0 || strcmp(op, "div") == 0) {
+            if(y->num == 0) {
+                lval_del(x);
+                lval_del(y);
+                x = lval_err("Division by zero!");
+                break;
+            }
+            x->num = x->num / y->num;
+
+        } else if(strcmp(op, "%") == 0) {
+            x->num = (int)(x->num) % (int)(y->num);
+
+        } else if(strcmp(op, "^") == 0) {
+            x->num = pow(x->num, y->num);
+    
+        } else if(strcmp(op, "min") == 0) {
+            x->num = (x->num < y->num) ? x->num : y->num;
+    
+        } else if(strcmp(op, "max") == 0) {
+            x->num = (x->num > y->num) ? x->num : y->num;
+    
+        } else {
+            lval_del(x);
+            lval_del(y);
+            x = lval_err("Bad operator!");
+            break;
+        }
+
+        lval_del(y);
+    }
+
+    lval_del(a);
+    return x;
+}
+
+// Forward declare
+lval* lval_eval_sexpr(lval* v);
+
+lval* lval_eval(lval* v) {
+    // Evaluate s-expressions.
+    if(v->type == LVAL_SEXPR) {
+        return lval_eval_sexpr(v);
+
+    // All other lval types remain the same.
+    } else {
+        return v;
+    }
+}
+
+lval* lval_eval_sexpr(lval* v) {
+    // Evaluate children
+    for(int i = 0; i < v->count; ++i) {
+        v->cell[i] = lval_eval(v->cell[i]);
+
+        // Error checking
+        if(v->cell[i]->type == LVAL_ERR) {
+            return lval_take(v, i);
+        }
+    }
+
+    // Empty expression
+    if(v->count == 0) {
+        return v;
+    }
+
+    // Single expression
+    if(v->count == 1) {
+        return lval_take(v, 0);
+    }
+
+    // Ensure first element is symbol
+    lval* first = lval_pop(v, 0);
+    if(first->type != LVAL_SYM) {
+        lval_del(first);
+        lval_del(v);
+        return lval_err("S-expression does not start with symbol!");
+    }
+
+    // Call builtin with operator
+    lval* result = builtin_op(v, first->sym);
+    lval_del(first);
+    return result;
+}
 
 int main(int argc, char** argv) {
 
@@ -312,8 +381,7 @@ int main(int argc, char** argv) {
         mpc_result_t r;
         if(mpc_parse("<stdin>", input, Blisp, &r)) {
             // On success, evaluate and print the result.
-            // lval result = eval(r.output);
-            lval* x = lval_read(r.output);
+            lval* x = lval_eval(lval_read(r.output));
             lval_println(x);
             lval_del(x);
             mpc_ast_delete(r.output);
