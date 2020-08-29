@@ -126,7 +126,7 @@ void lval_del(lval* v) {
     free(v);
 }
 
-// Adds an element to an S-Expression
+// Adds an element to an S-Expression or Q-Expression
 lval* lval_add(lval* v, lval* x) {
     v->count++;
     v->cell = realloc(v->cell, sizeof(lval*) * v->count);
@@ -413,6 +413,51 @@ lval* builtin_join(lval* a) {
 }
 
 
+// Takes a value and a Q-Expression and appends it to the front.
+lval* builtin_cons(lval* a) {
+    // Error checking
+    lval_assert(a, a->count == 2, "Function 'cons' did not pass 2 arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_NUM, "Function 'cons' did not pass number as first argument!");
+    lval_assert(a, a->cell[1]->type == LVAL_QEXPR, "Function 'cons' did not pass q-expr as second argument!");
+
+    lval* x = lval_qexpr();
+    lval_add(x, lval_pop(a, 0));    
+    x = lval_join(x, lval_pop(a, 0));
+
+    lval_del(a);
+    return x;
+}
+
+
+// Returns the number of elements in a Q-Expression
+lval* builtin_len(lval* a) {
+    // Error checking
+    lval_assert(a, a->count == 1, "Function 'len' passed too many arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'len' passed incorrect type!");
+
+    int numElements = a->cell[0]->count;
+
+    return lval_num(numElements);
+}
+
+
+// Returns all of a Q-Expression except the final element.
+lval* builtin_init(lval* a) {
+    // Error checking 
+    lval_assert(a, a->count == 1, "Function 'init' passed too many arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'init' passed incorrect type!");
+    lval_assert(a, a->cell[0]->count != 0, "Function 'init' passed {}!");
+
+    // Take the first argument.
+    lval* v = lval_take(a, 0);
+
+    // Delete final element.
+    lval_del(lval_pop(v, v->count - 1));
+
+    return v;
+}
+
+
 // Call appropriate builtin function
 lval* builtin(lval* a, char* func) {
 
@@ -430,6 +475,15 @@ lval* builtin(lval* a, char* func) {
     
     } else if(strcmp("eval", func) == 0) {
         return builtin_eval(a);
+
+    } else if(strcmp("cons", func) == 0) {
+        return builtin_cons(a);
+
+    } else if(strcmp("len", func) == 0) {
+        return builtin_len(a);
+
+    } else if(strcmp("init", func) == 0) {
+        return builtin_init(a);
     
     } else if(strstr("+ - * / % ^ add sub mul div min max", func)) {
         return builtin_op(a, func);
@@ -454,6 +508,7 @@ lval* lval_eval(lval* v) {
     }
 }
 
+// Evaluate s-expression
 lval* lval_eval_sexpr(lval* v) {
     // Evaluate children
     for(int i = 0; i < v->count; ++i) {
@@ -489,6 +544,7 @@ lval* lval_eval_sexpr(lval* v) {
     return result;
 }
 
+
 int main(int argc, char** argv) {
 
     // Create some parsers
@@ -502,7 +558,7 @@ int main(int argc, char** argv) {
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,
             " number : /-?[0-9]+([.][0-9]+)?/ ; \
-              symbol : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\" | \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"; \
+              symbol : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\" | \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | \"cons\" | \"len\" | \"init\"; \
               sexpr  : '(' <expr>* ')'; \
               qexpr  : '{' <expr>* '}'; \
               expr   : <number> | <symbol> | <sexpr> | <qexpr>; \
