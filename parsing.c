@@ -113,8 +113,11 @@ void lval_del(lval* v) {
             for(int i = 0; i < v->count; i++) {
                 lval_del(v->cell[i]);
             }
+
+            // Free memory allocated to contain the pointers
             free(v->cell);
             break;
+
         default:
             break;
     }
@@ -151,7 +154,7 @@ lval* lval_read(mpc_ast_t* t) {
 
     // If root (>) or sexpr then create empty list
     lval* x = NULL;
-    if(strcmp(t-> tag, ">") == 0 || strstr(t->tag, "sexpr")) {
+    if(strcmp(t->tag, ">") == 0 || strstr(t->tag, "sexpr")) {
         x = lval_sexpr();
     }
 
@@ -200,18 +203,23 @@ void lval_print(lval* v) {
         case LVAL_NUM:
             printf("%g", v->num);
             break;
+        
         case LVAL_ERR:
             printf("Error: %s", v->err);
             break;
+        
         case LVAL_SYM:
             printf("%s", v->sym);
             break;
+        
         case LVAL_SEXPR:
             lval_expr_print(v, '(', ')');
             break;
+        
         case LVAL_QEXPR:
             lval_expr_print(v, '{', '}');
             break;
+        
         default:
             break;
     }
@@ -244,6 +252,19 @@ lval* lval_pop(lval* v, int i) {
 lval* lval_take(lval* v, int i) {
     lval* x = lval_pop(v, i);
     lval_del(v);
+    return x;
+}
+
+// Joins two q-exprs
+lval* lval_join(lval* x, lval* y) {
+
+    // For each cell in y add x to it
+    while(y->count) {
+        x = lval_add(x, lval_pop(y, 0));
+    }
+
+    // Delete the empty y and return x
+    lval_del(y);
     return x;
 }
 
@@ -316,6 +337,109 @@ lval* builtin_op(lval* a, char* op) {
     return x;
 }
 
+#define lval_assert(args, cond, err) if (!(cond)) { lval_del(args); return lval_err(err); }
+
+// Takes a q-expr and returns a q-expr with only the first element
+lval* builtin_head(lval* a) {
+
+    // Error checking
+    lval_assert(a, a->count == 1, "Function 'head' passed too many arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'head' passed incorrect types!");
+    lval_assert(a, a->cell[0]->count != 0, "Function 'head' passed {}!");
+    
+    // Otherwise take first argument
+    lval* v = lval_take(a, 0);
+
+    // Delete all elements that are not head and return
+    while(v->count > 1) {
+        lval_del(lval_pop(v, 1));
+    }
+
+    return v;
+}
+
+// Takes a q-expr and returns a q-expr with the first element removed
+lval* builtin_tail(lval* a) {
+
+    // Error checking
+    lval_assert(a, a->count == 1, "Function 'tail' passed too many arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'tail' passed incorrect types!");
+    lval_assert(a, a->cell[0]->count != 0, "Function 'tail' passed {}!");
+    
+    // Otherwise take first argument.
+    lval* v = lval_take(a, 0);
+
+    // Delete first element and return.
+    lval_del(lval_pop(v, 0));
+
+    return v;
+}
+
+// Converts s-expr into q-expr
+lval* builtin_list(lval* a) {
+    a->type = LVAL_QEXPR;
+    return a;
+}
+
+// Forward declare
+lval* lval_eval(lval* v);
+
+// Converts a q-expr into an s-expr and evaluates it
+lval* builtin_eval(lval* a) {
+    // Error checking
+    lval_assert(a, a->count == 1, "Function 'eval' passed too many arguments!");
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'eval' passed incorrect types!");
+    
+    lval* v = lval_take(a, 0);
+    v->type = LVAL_SEXPR;
+    
+    return lval_eval(v);
+}
+
+// Joins 2+ q-expr
+lval* builtin_join(lval* a) {
+    for(int i = 0; i < a->count; ++i) {
+        lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'join' passed incorrect type!");
+    }
+
+    lval* v = lval_pop(a, 0);
+
+    while(a->count) {
+        v = lval_join(v, lval_pop(a, 0));
+    }
+
+    lval_del(a);
+    return v;
+}
+
+
+// Call appropriate builtin function
+lval* builtin(lval* a, char* func) {
+
+    if(strcmp("list", func) == 0) {
+        return builtin_list(a);
+
+    } else if(strcmp("head", func) == 0) {
+        return builtin_head(a);
+
+    } else if(strcmp("tail", func) == 0) {
+        return builtin_tail(a);
+
+    } else if(strcmp("join", func) == 0) {
+        return builtin_join(a);
+    
+    } else if(strcmp("eval", func) == 0) {
+        return builtin_eval(a);
+    
+    } else if(strstr("+ - * / % ^ add sub mul div min max", func)) {
+        return builtin_op(a, func);
+    
+    } else {
+        lval_del(a);
+        return lval_err("Unknown function!");
+    }
+}
+
 // Forward declare
 lval* lval_eval_sexpr(lval* v);
 
@@ -360,7 +484,7 @@ lval* lval_eval_sexpr(lval* v) {
     }
 
     // Call builtin with operator
-    lval* result = builtin_op(v, first->sym);
+    lval* result = builtin(v, first->sym);
     lval_del(first);
     return result;
 }
@@ -378,7 +502,7 @@ int main(int argc, char** argv) {
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,
             " number : /-?[0-9]+([.][0-9]+)?/ ; \
-              symbol : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\"; \
+              symbol : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\" | \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\"; \
               sexpr  : '(' <expr>* ')'; \
               qexpr  : '{' <expr>* '}'; \
               expr   : <number> | <symbol> | <sexpr> | <qexpr>; \
@@ -387,7 +511,7 @@ int main(int argc, char** argv) {
 
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
-    puts("\" hello there 😶 \"");
+    puts("hello there 😶");
     puts("Press Ctrl+c to Exit\n");
 
     // Infinite prompt
