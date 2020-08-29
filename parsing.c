@@ -32,7 +32,8 @@ enum lval_type {
     LVAL_ERR, // Errors
     LVAL_NUM, // Numbers
     LVAL_SYM, // Operators i.e. +, -
-    LVAL_SEXPR // S-expresisons
+    LVAL_SEXPR, // S-expresisons
+    LVAL_QEXPR // Quoted expressions
 };
 
 // "Lisp Value" to represent a number/error/symbol/sexpr
@@ -82,6 +83,15 @@ lval* lval_sexpr(void) {
     return v;
 }
 
+// Construct a pointer to a new empty Qexpr lval
+lval* lval_qexpr(void) {
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_QEXPR;
+    v->count = 0;
+    v->cell = NULL;
+    return v;
+}
+
 void lval_del(lval* v) {
 
     switch(v->type) {
@@ -97,7 +107,8 @@ void lval_del(lval* v) {
             free(v->sym);
             break;
 
-        // For Sexpr, recursively delete all the elements inside
+        // For Sexpr and Qexpr, recursively delete all the elements inside
+        case LVAL_QEXPR:
         case LVAL_SEXPR:
             for(int i = 0; i < v->count; i++) {
                 lval_del(v->cell[i]);
@@ -144,10 +155,16 @@ lval* lval_read(mpc_ast_t* t) {
         x = lval_sexpr();
     }
 
+    if(strstr(t->tag, "qexpr")) {
+        x = lval_qexpr();
+    }
+
     // Fill this list with any valid expression contained within
     for(int i = 0; i < t->children_num; ++i) {
         if(strcmp(t->children[i]->contents, "(") == 0 ||
            strcmp(t->children[i]->contents, ")") == 0 ||
+           strcmp(t->children[i]->contents, "{") == 0 ||
+           strcmp(t->children[i]->contents, "}") == 0 ||
            strcmp(t->children[i]->tag, "regex") == 0) {
             continue;
         }
@@ -191,6 +208,9 @@ void lval_print(lval* v) {
             break;
         case LVAL_SEXPR:
             lval_expr_print(v, '(', ')');
+            break;
+        case LVAL_QEXPR:
+            lval_expr_print(v, '{', '}');
             break;
         default:
             break;
@@ -351,6 +371,7 @@ int main(int argc, char** argv) {
     mpc_parser_t* Number = mpc_new("number");
     mpc_parser_t* Symbol = mpc_new("symbol");
     mpc_parser_t* Sexpr = mpc_new("sexpr");
+    mpc_parser_t* Qexpr = mpc_new("qexpr");
     mpc_parser_t* Expr = mpc_new("expr");
     mpc_parser_t* Blisp = mpc_new("blisp");
 
@@ -359,13 +380,14 @@ int main(int argc, char** argv) {
             " number : /-?[0-9]+([.][0-9]+)?/ ; \
               symbol : '+' | '-' | '*' | '/' | '%' | '^' | \"add\" | \"sub\" | \"mul\" | \"div\" | \"min\" | \"max\"; \
               sexpr  : '(' <expr>* ')'; \
-              expr   : <number> | <symbol> | <sexpr> ; \
+              qexpr  : '{' <expr>* '}'; \
+              expr   : <number> | <symbol> | <sexpr> | <qexpr>; \
               blisp  : /^/ <expr>* /$/ ; \
-            ", Number, Symbol, Sexpr, Expr, Blisp);
+            ", Number, Symbol, Sexpr, Qexpr, Expr, Blisp);
 
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
-    puts("\" hello there 😶\" ");
+    puts("\" hello there 😶 \"");
     puts("Press Ctrl+c to Exit\n");
 
     // Infinite prompt
@@ -396,7 +418,7 @@ int main(int argc, char** argv) {
     }
 
     // Undefine and delete our parsers
-    mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Blisp);
+    mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Blisp);
 
     return 0;
 }
