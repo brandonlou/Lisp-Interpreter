@@ -557,6 +557,32 @@ lval* builtin_init(lenv* e, lval* a) {
     return v;
 }
 
+void lenv_put(lenv* e, lval* k, lval* v);
+// Define a new variable
+// Returns () on success
+lval* builtin_def(lenv* e, lval* a) {
+    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'def' passed incorrect type!");
+
+    // First argument is symbol list
+    lval* syms = a->cell[0];
+
+    // Ensure all elements of first list are symbols
+    for(int i = 0; i < syms->count; ++i) {
+        lval_assert(a, syms->cell[i]->type == LVAL_SYM, "Function 'def' cannot define non-symbol");
+    }
+
+    // Check correct number of symbols and values
+    lval_assert(a, syms->count == a->count - 1, "Function 'def' cannot define incorrect number of values to symbols");
+
+    // Assign copies of values to symbols
+    for(int i = 0; i < syms->count; ++i) {
+        lenv_put(e, syms->cell[i], a->cell[i + 1]);
+    }
+
+    lval_del(a);
+    return lval_sexpr();
+}
+
 
 // Call appropriate builtin function
 lval* builtin(lenv* e, lval* a, char* func) {
@@ -766,6 +792,9 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "div", builtin_div);
     lenv_add_builtin(e, "min", builtin_min);
     lenv_add_builtin(e, "max", builtin_max);
+
+    // Variable functions
+    lenv_add_builtin(e, "def", builtin_def);
 }
 
 int main(int argc, char** argv) {
