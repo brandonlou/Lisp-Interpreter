@@ -43,6 +43,28 @@ enum lval_type {
     LVAL_QEXPR // Quoted expressions
 };
 
+
+// Returns string representation of type
+char* ltype_name(enum lval_type type) {
+    switch(type) {
+        case LVAL_FUN:
+            return "Function";
+        case LVAL_NUM:
+            return "Number";
+        case LVAL_ERR:
+            return "Error";
+        case LVAL_SYM:
+            return "Symbol";
+        case LVAL_SEXPR:
+            return "S-Expression";
+        case LVAL_QEXPR:
+            return "Q-Expression";
+        default:
+            return "Unknown";
+    }
+}
+
+
 // Declare new function pointer type named lbuiltin that is called
 // with a lenv* and lval*, returning a lval*
 typedef lval*(*lbuiltin) (lenv*, lval*);
@@ -62,6 +84,7 @@ struct lval {
     struct lval** cell;
 };
 
+
 // Construct a pointer to a new Number lval
 lval* lval_num(double x) {
     lval* v = malloc(sizeof(lval));
@@ -70,14 +93,31 @@ lval* lval_num(double x) {
     return v;
 }
 
+
 // Construct a pointer to a new Error lval
-lval* lval_err(char* message) {
+lval* lval_err(char* fmt, ...) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_ERR;
-    v->err = malloc(strlen(message) + 1);
-    strcpy(v->err, message);
+    
+    // Create a va list and initialize it
+    va_list va;
+    va_start(va, fmt);
+
+    // Allocate 512 bytes of space
+    v->err = malloc(512);
+
+    // printf the error string with a maximum of 511 characters
+    vsnprintf(v->err, 511, fmt, va);
+
+    // Reallocate to number of bytes actually used
+    v->err = realloc(v->err, strlen(v->err) + 1);
+
+    // Cleanup our va list
+    va_end(va);
+    
     return v;
 }
+
 
 // Construct a pointer to a new Symbol lval
 lval* lval_sym(char* s ) {
@@ -88,6 +128,7 @@ lval* lval_sym(char* s ) {
     return v;
 }
 
+
 // Construct a pointer to a new Function lval
 lval* lval_fun(lbuiltin func) {
     lval* v = malloc(sizeof(lval));
@@ -95,6 +136,7 @@ lval* lval_fun(lbuiltin func) {
     v->fun = func;
     return v;
 }
+
 
 // Construct a pointer to a new emtpy Sexpr lval
 lval* lval_sexpr(void) {
@@ -105,6 +147,7 @@ lval* lval_sexpr(void) {
     return v;
 }
 
+
 // Construct a pointer to a new empty Qexpr lval
 lval* lval_qexpr(void) {
     lval* v = malloc(sizeof(lval));
@@ -113,6 +156,7 @@ lval* lval_qexpr(void) {
     v->cell = NULL;
     return v;
 }
+
 
 // Copies an lval (useful when putting things in/out of the environment)
 lval* lval_copy(lval* v) {
@@ -155,6 +199,7 @@ lval* lval_copy(lval* v) {
     return x;
 }
 
+
 void lval_del(lval* v) {
 
     switch(v->type) {
@@ -190,6 +235,7 @@ void lval_del(lval* v) {
     free(v);
 }
 
+
 // Adds an element to an S-Expression or Q-Expression
 lval* lval_add(lval* v, lval* x) {
     v->count++;
@@ -198,12 +244,14 @@ lval* lval_add(lval* v, lval* x) {
     return v;
 }
 
+
 // Converts an AST number to lval number and checks for error.
 lval* lval_read_num(mpc_ast_t* t) {
     errno = 0;
     double x = strtod(t->contents, NULL);
     return (errno != ERANGE)? lval_num(x) : lval_err("invalid number");
 }
+
 
 // Converts AST to S-Expression
 lval* lval_read(mpc_ast_t* t) {
@@ -242,27 +290,35 @@ lval* lval_read(mpc_ast_t* t) {
 
 }
 
+
 // Forward declaration because lval_expr_print and lval_print depend on each other
-void lval_print(lval* v);
+void lval_print(lenv* e, lval* v);
 
 // Prints an s-expr type lval
-void lval_expr_print(lval* v, char open, char close) {
+void lval_expr_print(lenv* e, lval* v, char open, char close) {
+    
     putchar(open);
+
     for(int i = 0; i < v->count; ++i) {
 
         // Print value contained within
-        lval_print(v->cell[i]);
+        lval_print(e, v->cell[i]);
 
         // Don't print trailing space if last element
         if(i != (v->count - 1)) {
             putchar(' ');
         }
     }
+
     putchar(close);
+
 }
 
+
+void lval_func_print(lenv* e, lval* v);
+
 // Prints an lval
-void lval_print(lval* v) {
+void lval_print(lenv* e, lval* v) {
     switch(v->type) {
         case LVAL_NUM:
             printf("%g", v->num);
@@ -277,15 +333,15 @@ void lval_print(lval* v) {
             break;
 
         case LVAL_FUN:
-            printf("<function>");
+            lval_func_print(e, v);
             break;
         
         case LVAL_SEXPR:
-            lval_expr_print(v, '(', ')');
+            lval_expr_print(e, v, '(', ')');
             break;
         
         case LVAL_QEXPR:
-            lval_expr_print(v, '{', '}');
+            lval_expr_print(e, v, '{', '}');
             break;
         
         default:
@@ -293,11 +349,13 @@ void lval_print(lval* v) {
     }
 }
 
+
 // Prints an lval followed by a newline
-void lval_println(lval* v) {
-    lval_print(v);
+void lval_println(lenv* e, lval* v) {
+    lval_print(e, v);
     putchar('\n');
 }
+
 
 // Extracts a single element from an s-expr at index i and shifts the rest of the list backwards
 lval* lval_pop(lval* v, int i) {
@@ -316,12 +374,14 @@ lval* lval_pop(lval* v, int i) {
     return x;
 }
 
+
 // Take element i from the list and delete the rest
 lval* lval_take(lval* v, int i) {
     lval* x = lval_pop(v, i);
     lval_del(v);
     return x;
 }
+
 
 // Joins two q-exprs
 lval* lval_join(lval* x, lval* y) {
@@ -335,6 +395,7 @@ lval* lval_join(lval* x, lval* y) {
     lval_del(y);
     return x;
 }
+
 
 // Perform operation op on all lvals in the list.
 lval* builtin_op(lenv* e, lval* a, char* op) {
@@ -405,6 +466,7 @@ lval* builtin_op(lenv* e, lval* a, char* op) {
     return x;
 }
 
+
 lval* builtin_add(lenv* e, lval* a) {
     return builtin_op(e, a, "+");
 }
@@ -437,16 +499,43 @@ lval* builtin_max(lenv* e, lval* a) {
     return builtin_op(e, a, "max");
 }
 
-#define lval_assert(args, cond, err) if (!(cond)) { lval_del(args); return lval_err(err); }
+#define lval_assert(args, cond, fmt, ...) \
+    if (!(cond)) { \
+        lval* err = lval_err(fmt, ##__VA_ARGS__); \
+        lval_del(args); \
+        return err; \
+    }
+
+
+// Report argument count errors.
+#define lval_check_argcount(name, args, expected_count) \
+    lval_assert(args, args->count == expected_count, \
+            "Function '%s' passed incorrect number of arguments. Got %i, Expected %i.", \
+            name, args->count, expected_count);
+
+
+// Report type errors.
+#define lval_check_type(name, args, argnum, expected_type) \
+    lval_assert(args, args->cell[argnum]->type == expected_type, \
+            "Function '%s' passed incorrect type for argument %i. Got %s, Expected %s.", \
+            name, argnum, ltype_name(args->cell[argnum]->type), ltype_name(expected_type));
+
+
+// Report empty list errors
+#define lval_check_emptylist(name, args, argnum) \
+    lval_assert(args, a->cell[argnum]->count != 0, \
+            "Function '%s' passed {} for argument %i.", \
+            name, argnum);
+
 
 // Takes a q-expr and returns a q-expr with only the first element
 lval* builtin_head(lenv* e, lval* a) {
 
     // Error checking
-    lval_assert(a, a->count == 1, "Function 'head' passed too many arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'head' passed incorrect types!");
-    lval_assert(a, a->cell[0]->count != 0, "Function 'head' passed {}!");
-    
+    lval_check_argcount("head", a, 1);
+    lval_check_type("head", a, 0, LVAL_QEXPR);
+    lval_check_emptylist("head", a, 0);
+
     // Otherwise take first argument
     lval* v = lval_take(a, 0);
 
@@ -458,13 +547,14 @@ lval* builtin_head(lenv* e, lval* a) {
     return v;
 }
 
+
 // Takes a q-expr and returns a q-expr with the first element removed
 lval* builtin_tail(lenv* e, lval* a) {
 
     // Error checking
-    lval_assert(a, a->count == 1, "Function 'tail' passed too many arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'tail' passed incorrect types!");
-    lval_assert(a, a->cell[0]->count != 0, "Function 'tail' passed {}!");
+    lval_check_argcount("tail", a, 1);
+    lval_check_type("tail", a, 0, LVAL_QEXPR);
+    lval_check_emptylist("tail", a, 0); 
     
     // Otherwise take first argument.
     lval* v = lval_take(a, 0);
@@ -475,31 +565,37 @@ lval* builtin_tail(lenv* e, lval* a) {
     return v;
 }
 
+
 // Converts s-expr into q-expr
 lval* builtin_list(lenv* e, lval* a) {
     a->type = LVAL_QEXPR;
     return a;
 }
 
+
 // Forward declare
 lval* lval_eval(lenv* e, lval* v);
 
 // Converts a q-expr into an s-expr and evaluates it
 lval* builtin_eval(lenv* e, lval* a) {
-    // Error checking
-    lval_assert(a, a->count == 1, "Function 'eval' passed too many arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'eval' passed incorrect types!");
     
+    // Error checking
+    lval_check_argcount("eval", a, 1);
+    lval_check_type("eval", a, 0, LVAL_QEXPR);
+
     lval* v = lval_take(a, 0);
     v->type = LVAL_SEXPR;
     
     return lval_eval(e, v);
+
 }
+
 
 // Joins 2+ q-expr
 lval* builtin_join(lenv* e, lval* a) {
+    
     for(int i = 0; i < a->count; ++i) {
-        lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'join' passed incorrect type!");
+        lval_check_type("join", a, i, LVAL_QEXPR);
     }
 
     lval* v = lval_pop(a, 0);
@@ -515,10 +611,11 @@ lval* builtin_join(lenv* e, lval* a) {
 
 // Takes a value and a Q-Expression and appends it to the front.
 lval* builtin_cons(lenv* e, lval* a) {
+    
     // Error checking
-    lval_assert(a, a->count == 2, "Function 'cons' did not pass 2 arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_NUM, "Function 'cons' did not pass number as first argument!");
-    lval_assert(a, a->cell[1]->type == LVAL_QEXPR, "Function 'cons' did not pass q-expr as second argument!");
+    lval_check_argcount("cons", a, 2);
+    lval_check_type("cons", a, 0, LVAL_NUM);
+    lval_check_type("cons", a, 1, LVAL_QEXPR);
 
     lval* x = lval_qexpr();
     lval_add(x, lval_pop(a, 0));    
@@ -526,27 +623,30 @@ lval* builtin_cons(lenv* e, lval* a) {
 
     lval_del(a);
     return x;
+
 }
 
 
 // Returns the number of elements in a Q-Expression
 lval* builtin_len(lenv* e, lval* a) {
+    
     // Error checking
-    lval_assert(a, a->count == 1, "Function 'len' passed too many arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'len' passed incorrect type!");
+    lval_check_argcount("len", a, 1);
+    lval_check_type("len", a, 0, LVAL_QEXPR);
 
-    int numElements = a->cell[0]->count;
+    int num_elements = a->cell[0]->count;
 
-    return lval_num(numElements);
+    return lval_num(num_elements);
 }
 
 
 // Returns all of a Q-Expression except the final element.
 lval* builtin_init(lenv* e, lval* a) {
+    
     // Error checking 
-    lval_assert(a, a->count == 1, "Function 'init' passed too many arguments!");
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'init' passed incorrect type!");
-    lval_assert(a, a->cell[0]->count != 0, "Function 'init' passed {}!");
+    lval_check_argcount("init", a, 1);
+    lval_check_type("init", a, 0, LVAL_QEXPR);
+    lval_check_emptylist("init", a, 0);
 
     // Take the first argument.
     lval* v = lval_take(a, 0);
@@ -555,13 +655,16 @@ lval* builtin_init(lenv* e, lval* a) {
     lval_del(lval_pop(v, v->count - 1));
 
     return v;
+
 }
 
+
 void lenv_put(lenv* e, lval* k, lval* v);
-// Define a new variable
-// Returns () on success
+
+// Define a new variable. Returns empty list on success.
 lval* builtin_def(lenv* e, lval* a) {
-    lval_assert(a, a->cell[0]->type == LVAL_QEXPR, "Function 'def' passed incorrect type!");
+
+    lval_check_type("def", a, 0, LVAL_QEXPR);
 
     // First argument is symbol list
     lval* syms = a->cell[0];
@@ -581,6 +684,7 @@ lval* builtin_def(lenv* e, lval* a) {
 
     lval_del(a);
     return lval_sexpr();
+
 }
 
 
@@ -619,6 +723,7 @@ lval* builtin(lenv* e, lval* a, char* func) {
         return lval_err("Unknown function!");
     }
 }
+
 
 // Forward declare
 lval* lval_eval_sexpr(lenv* e, lval* v);
@@ -682,6 +787,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
     return result;
 }
 
+
 // Define our environment structure. Encodes a list of relationships
 // between names and values
 struct lenv {
@@ -689,6 +795,24 @@ struct lenv {
     char** syms;
     lval** vals;
 };
+
+
+// Prints a function type lval.
+void lval_func_print(lenv* e, lval* v) {
+   
+    // Iterate through all builtin functions
+    for(int i = 0; i < e->count; ++i) {
+        if(e->vals[i]->fun == v->fun) {
+            printf("<function: %s>", e->syms[i]);
+            return;
+        }
+    }
+
+    // Function not found in environment.
+    printf("<unknown function>");
+
+}
+
 
 // Create new pointer to a lenv
 lenv* lenv_new(void) {
@@ -698,6 +822,7 @@ lenv* lenv_new(void) {
     e->vals = NULL;
     return e;
 }
+
 
 // Deletes an lenv
 void lenv_del(lenv* e) {
@@ -714,6 +839,7 @@ void lenv_del(lenv* e) {
     free(e);
 }
 
+
 // Gets a value from the environement
 lval* lenv_get(lenv* e, lval* k) {
     
@@ -727,8 +853,9 @@ lval* lenv_get(lenv* e, lval* k) {
     }
 
     // If no symbol found return error
-    return lval_err("Unbound symbol!");
+    return lval_err("Unbound symbol: '%s'", k->sym);
 }
+
 
 // Puts values into environment
 void lenv_put(lenv* e, lval* k, lval* v) {
@@ -757,6 +884,7 @@ void lenv_put(lenv* e, lval* k, lval* v) {
     strcpy(e->syms[e->count - 1], k->sym);
 }
 
+
 // Adds a function with its corresponding name to the environment
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
     lval* key = lval_sym(name);
@@ -765,6 +893,7 @@ void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
     lval_del(key);
     lval_del(value);
 }
+
 
 // Adds all our language builtin functions
 void lenv_add_builtins(lenv* e) {
@@ -797,6 +926,7 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "def", builtin_def);
 }
 
+
 int main(int argc, char** argv) {
 
     // Create some parsers
@@ -810,7 +940,7 @@ int main(int argc, char** argv) {
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,
             " number : /-?[0-9]+([.][0-9]+)?/ ; \
-              symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/; \
+              symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&^%]+/; \
               sexpr  : '(' <expr>* ')'; \
               qexpr  : '{' <expr>* '}'; \
               expr   : <number> | <symbol> | <sexpr> | <qexpr>; \
@@ -840,7 +970,7 @@ int main(int argc, char** argv) {
             
             // On success, evaluate and print the result.
             lval* x = lval_eval(e, lval_read(r.output));
-            lval_println(x);
+            lval_println(e, x);
             lval_del(x);
 
             mpc_ast_delete(r.output);
@@ -863,3 +993,4 @@ int main(int argc, char** argv) {
     
     return 0;
 }
+
