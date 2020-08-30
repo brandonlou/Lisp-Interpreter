@@ -120,7 +120,7 @@ lval* lval_err(char* fmt, ...) {
 
 
 // Construct a pointer to a new Symbol lval
-lval* lval_sym(char* s ) {
+lval* lval_sym(char* s) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_SYM;
     v->sym = malloc(strlen(s) + 1);
@@ -160,8 +160,10 @@ lval* lval_qexpr(void) {
 
 // Copies an lval (useful when putting things in/out of the environment)
 lval* lval_copy(lval* v) {
+    
     lval* x = malloc(sizeof(lval));
     x->type = v->type;
+    
     switch(v->type) {
 
         // Copy Functions and Numbers directly
@@ -359,6 +361,7 @@ void lval_println(lenv* e, lval* v) {
 
 // Extracts a single element from an s-expr at index i and shifts the rest of the list backwards
 lval* lval_pop(lval* v, int i) {
+    
     // Find the item at index i
     lval* x = v->cell[i];
 
@@ -659,6 +662,12 @@ lval* builtin_init(lenv* e, lval* a) {
 }
 
 
+// Exit the interpreter.
+lval* builtin_exit(lenv* e, lval* a) {
+    return lval_sexpr();
+}
+
+
 void lenv_put(lenv* e, lval* k, lval* v);
 
 // Define a new variable. Returns empty list on success.
@@ -686,7 +695,6 @@ lval* builtin_def(lenv* e, lval* a) {
     return lval_sexpr();
 
 }
-
 
 // Call appropriate builtin function
 lval* builtin(lenv* e, lval* a, char* func) {
@@ -814,6 +822,35 @@ void lval_func_print(lenv* e, lval* v) {
 }
 
 
+// Print all named values in an environment up to number specified.
+// If -1, print all.
+lval* builtin_values(lenv* e, lval* a) {
+
+    lval_check_argcount("values", a, 1);
+    lval_check_type("values", a, 0, LVAL_NUM);
+
+    double num = a->cell[0]->num;
+    lval* x = lval_qexpr();
+
+    // Print all named values.
+    if(num == -1) {
+        for(int i = 0; i < e->count; ++i) {
+            lval_add(x, lval_sym(e->syms[i]));
+        }
+
+    // Print up to specified number of named values.
+    } else {
+        for(int i = 0; i < e->count && i < num; ++i) {
+            lval_add(x, lval_sym(e->syms[i]));
+        }
+    }
+
+    lval_del(a);
+    return x;
+
+}
+
+
 // Create new pointer to a lenv
 lenv* lenv_new(void) {
     lenv* e = malloc(sizeof(lenv));
@@ -882,6 +919,7 @@ void lenv_put(lenv* e, lval* k, lval* v) {
     e->vals[e->count - 1] = lval_copy(v);
     e->syms[e->count - 1] = malloc(strlen(k->sym) + 1);
     strcpy(e->syms[e->count - 1], k->sym);
+
 }
 
 
@@ -924,6 +962,11 @@ void lenv_add_builtins(lenv* e) {
 
     // Variable functions
     lenv_add_builtin(e, "def", builtin_def);
+
+    // Zero argument functions
+    lenv_add_builtin(e, "values", builtin_values);
+    lenv_add_builtin(e, "exit", builtin_exit);
+
 }
 
 
