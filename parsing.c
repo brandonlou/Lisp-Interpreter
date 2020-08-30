@@ -662,9 +662,18 @@ lval* builtin_init(lenv* e, lval* a) {
 }
 
 
-// Exit the interpreter.
+// Exit the interpreter with specified exit code.
 lval* builtin_exit(lenv* e, lval* a) {
-    return lval_sexpr();
+    
+    lval_check_argcount("exit", a, 1);
+    lval_check_type("exit", a, 0, LVAL_NUM);
+
+    int status = (int)(a->cell[0]->num);
+    
+    printf("Please come again...\n");
+    printf("Exiting blisp: %i\n", status);
+    exit(status);
+
 }
 
 
