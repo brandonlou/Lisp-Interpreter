@@ -108,4 +108,7 @@ lval* lval_eval(lenv* e, lval* v);
 // Evaluate an S-Expression.
 lval* lval_eval_sexpr(lenv* e, lval* v);
 
+// Calls a built-in or user-defined function.
+lval* lval_call(lenv* e, lval* f, lval* a);
+
 #endif

@@ -464,15 +464,72 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
     // Ensure first element is a function after evaluation
     lval* first = lval_pop(v, 0);
     if(first->type != LVAL_FUN) {
+        lval* err = lval_err("S-Expression starts with incorrect type. Got %s, Expected %s",
+                              ltype_name(first->type), ltype_name(LVAL_FUN));
         lval_del(v);
         lval_del(first);
-        return lval_err("First element is not a function!");
+        return err;
     }
 
     // If so, call function to get result.
-    lval* result = first->builtin(e, v);
+    lval* result = lval_call(e, first, v);
     
     lval_del(first);
     return result;
+
+}
+
+// Calls a built-in or user-defined function.
+lval* lval_call(lenv* e, lval* f, lval* a) {
+
+    // If built-in function then simply call that
+    if(f->builtin) {
+        return f->builtin(e, a);
+    }
+
+    // Record argument counts
+    int given_args = a->count;
+    int total_args = f->formals->count;
+
+    // While arguments still remain to be processed
+    while(a->count) {
+
+        // If we've ran out of formal arguments to bind
+        if(f->formals->count == 0) {
+            lval_del(a);
+            return lval_err("Function passed too many arguments. Got %i, Expected %i.", given_args, total_args);
+        }
+
+        // Pop the first symbol from the formals
+        lval* sym = lval_pop(f->formals, 0);
+
+        // Pop the next argument from the list
+        lval* val = lval_pop(a, 0);
+
+        // Bind a copy into the function's environment
+        lenv_put(f->env, sym, val);
+
+        // Delete symbol and value.
+        lval_del(sym);
+        lval_del(val);
+
+    }
+
+    // Argument list is now bound so can be cleaned up.
+    lval_del(a);
+
+    // If all formals have been bound, then evaluate.
+    if(f->formals->count == 0) {
+
+        // Set the parent environment to evaluation environment.
+        f->env->parent = e;
+
+        // Evaluate and return
+        return builtin_eval(f->env, lval_add(lval_sexpr(), lval_copy(f->body)));
+
+    // Otherwise, return partially evaluated function.
+    } else {
+        return lval_copy(f);
+    }
 
 }
