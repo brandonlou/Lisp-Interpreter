@@ -73,13 +73,19 @@ typedef lval*(*lbuiltin) (lenv*, lval*);
 struct lval {
     enum lval_type type;
 
+    // Basic
     double num;
-    // Errors and symbols are strings
     char* err;
     char* sym;
-    lbuiltin fun;
+
+    // Function
+    lbuiltin builtin;
+    lenv* env;
+    lval* formals;
+    lval* body;
 
     // Variable array of lvals and corresponding count
+    // For expressions
     int count;
     struct lval** cell;
 };
@@ -133,8 +139,30 @@ lval* lval_sym(char* s) {
 lval* lval_fun(lbuiltin func) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_FUN;
-    v->fun = func;
+    v->builtin = func;
     return v;
+}
+
+lenv* lenv_new();
+
+// Constructs user defined functions
+lval* lval_lambda(lval* formals, lval* body) {
+    
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_FUN;
+
+    // Set Builtin to Null
+    v->builtin = NULL;
+
+    // Build new environment
+    v->env = lenv_new();
+
+    // Set formals and body
+    v->formals = formals;
+    v->body = body;
+
+    return v;
+
 }
 
 
@@ -157,6 +185,7 @@ lval* lval_qexpr(void) {
     return v;
 }
 
+lenv* lenv_copy(lenv* e);
 
 // Copies an lval (useful when putting things in/out of the environment)
 lval* lval_copy(lval* v) {
@@ -168,8 +197,18 @@ lval* lval_copy(lval* v) {
 
         // Copy Functions and Numbers directly
         case LVAL_FUN:
-            x->fun = v->fun;
+            // Builtin function
+            if(v->builtin) {
+                x->builtin = v->builtin;
+            } else { // User-defined function
+                x->builtin = NULL;
+                x->env = lenv_copy(v->env);
+                x->formals = lval_copy(v->formals);
+                x->body = lval_copy(v->body);
+            }
+            
             break;
+        
         case LVAL_NUM:
             x->num = v->num;
             break;
@@ -201,6 +240,7 @@ lval* lval_copy(lval* v) {
     return x;
 }
 
+void lenv_del(lenv* e);
 
 void lval_del(lval* v) {
 
@@ -208,6 +248,11 @@ void lval_del(lval* v) {
         // Do nothing special for number and function type
         case LVAL_NUM:
         case LVAL_FUN:
+            if(!v->builtin) { // Do stuff if user defined function
+                lenv_del(v->env);
+                lval_del(v->formals);
+                lval_del(v->body);
+            }
             break;
         
         // For Errors or Symbols free the allocated string
@@ -676,34 +721,77 @@ lval* builtin_exit(lenv* e, lval* a) {
 
 }
 
-
+void lenv_def(lenv* e, lval* k, lval* v);
 void lenv_put(lenv* e, lval* k, lval* v);
 
 // Define a new variable. Returns empty list on success.
-lval* builtin_def(lenv* e, lval* a) {
+lval* builtin_var(lenv* e, lval* a, char* name) {
 
-    lval_check_type("def", a, 0, LVAL_QEXPR);
+    lval_check_type(name, a, 0, LVAL_QEXPR);
 
     // First argument is symbol list
     lval* syms = a->cell[0];
 
     // Ensure all elements of first list are symbols
     for(int i = 0; i < syms->count; ++i) {
-        lval_assert(a, syms->cell[i]->type == LVAL_SYM, "Function 'def' cannot define non-symbol");
+        lval_assert(a, syms->cell[i]->type == LVAL_SYM,
+                "Function '%s' cannot define non-symbol. Got %s, Expected %s.",
+                name, ltype_name(syms->cell[i]->type), ltype_name(LVAL_SYM));
     }
 
     // Check correct number of symbols and values
-    lval_assert(a, syms->count == a->count - 1, "Function 'def' cannot define incorrect number of values to symbols");
+    lval_assert(a, syms->count == a->count - 1,
+            "Function 'def' cannot define incorrect number of values to symbols");
 
     // Assign copies of values to symbols
     for(int i = 0; i < syms->count; ++i) {
-        lenv_put(e, syms->cell[i], a->cell[i + 1]);
+
+        // If 'def', define variable globally.
+        if(strcmp(name, "def") == 0) {
+            lenv_def(e, syms->cell[i], a->cell[i + 1]);
+        
+        // If 'put', define variable lcoally.
+        } else if(strcmp(name, "=") == 0) {
+            lenv_put(e, syms->cell[i], a->cell[i + 1]);
+        }
     }
 
     lval_del(a);
     return lval_sexpr();
 
 }
+
+lval* builtin_def(lenv* e, lval* a) {
+    return builtin_var(e, a, "def");
+}
+
+lval* builtin_put(lenv* e, lval* a) {
+    return builtin_var(e, a, "=");
+}
+
+
+// Builds a lambda function given a list of symbols and a list represneting the code
+lval* builtin_lambda(lenv* e, lval* a) {
+
+    // Check for 2 arguments, each of which are Q-Expressions.
+    lval_check_argcount("λ", a, 2);
+    lval_check_type("λ", a, 0, LVAL_QEXPR);
+    lval_check_type("λ", a, 1, LVAL_QEXPR);
+
+    // Check first Q-Expression contains only symbols
+    for(int i = 0; i < a->cell[0]->count; ++i) {
+        lval_check_type("λ parameters", a->cell[0], i, LVAL_SYM);
+    }
+
+    // Pop first two arguments and pass them to lval_lambda
+    lval* formals = lval_pop(a, 0);
+    lval* body = lval_pop(a, 0);
+    lval_del(a);
+
+    return lval_lambda(formals, body);
+
+}
+
 
 // Call appropriate builtin function
 lval* builtin(lenv* e, lval* a, char* func) {
@@ -799,7 +887,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
     }
 
     // If so, call function to get result.
-    lval* result = first->fun(e, v);
+    lval* result = first->builtin(e, v);
     lval_del(first);
     return result;
 }
@@ -808,19 +896,36 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
 // Define our environment structure. Encodes a list of relationships
 // between names and values
 struct lenv {
+
+    // Parent environment
+    lenv* parent;
+
     int count;
     char** syms;
     lval** vals;
+
 };
 
 
 // Prints a function type lval.
 void lval_func_print(lenv* e, lval* v) {
    
+    // Print out function params and body if user-defined
+    if(!v->builtin) {
+        printf("(λ ");
+        lval_print(e, v->formals);
+        putchar(' ');
+        lval_print(e, v->body);
+        putchar(')');
+        return;
+    }
+
     // Iterate through all builtin functions
     for(int i = 0; i < e->count; ++i) {
-        if(e->vals[i]->fun == v->fun) {
-            printf("<function: %s>", e->syms[i]);
+
+        // If function pointers are equal, print corresponding name.
+        if(e->vals[i]->builtin == v->builtin) {
+            printf("<builtin: %s>", e->syms[i]);
             return;
         }
     }
@@ -863,6 +968,7 @@ lval* builtin_values(lenv* e, lval* a) {
 // Create new pointer to a lenv
 lenv* lenv_new(void) {
     lenv* e = malloc(sizeof(lenv));
+    e->parent = NULL;
     e->count = 0;
     e->syms = NULL;
     e->vals = NULL;
@@ -886,6 +992,22 @@ void lenv_del(lenv* e) {
 }
 
 
+// Copies an environment.
+lenv* lenv_copy(lenv* e) {
+    lenv* new = malloc(sizeof(lenv));
+    new->parent = e->parent;
+    new->count = e->count;
+    new->syms = malloc(sizeof(char*) * new->count);
+    new->vals = malloc(sizeof(lval*) * new->count);
+    for(int i = 0; i < e->count; ++i) {
+        new->syms[i] = malloc(strlen(e->syms[i]) + 1);
+        strcpy(new->syms[i], e->syms[i]);
+        new->vals[i] = lval_copy(e->vals[i]);
+    }
+    return new;
+}
+
+
 // Gets a value from the environement
 lval* lenv_get(lenv* e, lval* k) {
     
@@ -898,8 +1020,15 @@ lval* lenv_get(lenv* e, lval* k) {
         }
     }
 
-    // If no symbol found return error
-    return lval_err("Unbound symbol: '%s'", k->sym);
+    // If no symbol in current environment check in parent environment
+    if(e->parent) {
+        return lenv_get(e->parent, k);
+
+    // Otherwise, no symbol found and return error
+    } else {
+        return lval_err("Unbound symbol: '%s'", k->sym);
+    }
+
 }
 
 
@@ -928,6 +1057,20 @@ void lenv_put(lenv* e, lval* k, lval* v) {
     e->vals[e->count - 1] = lval_copy(v);
     e->syms[e->count - 1] = malloc(strlen(k->sym) + 1);
     strcpy(e->syms[e->count - 1], k->sym);
+
+}
+
+
+// Puts values into global environment
+void lenv_def(lenv* e, lval* k, lval* v) {
+
+    // Go up parent environments until no parents
+    while(e->parent) {
+        e = e->parent;
+    }
+
+    // Put value in global environment.
+    lenv_put(e, k, v);
 
 }
 
@@ -971,6 +1114,8 @@ void lenv_add_builtins(lenv* e) {
 
     // Variable functions
     lenv_add_builtin(e, "def", builtin_def);
+    lenv_add_builtin(e, "=", builtin_put);
+    lenv_add_builtin(e, "\\", builtin_lambda); // Single backslash
 
     // Zero argument functions
     lenv_add_builtin(e, "values", builtin_values);
