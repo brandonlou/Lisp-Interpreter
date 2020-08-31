@@ -9,8 +9,17 @@ LDFLAGS = -ledit -lm
 
 default: blisp
 
-blisp: blisp.o mpc.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o blisp blisp.o mpc.o
+blisp: blisp.o mpc.o lval.o lenv.o builtin.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o blisp blisp.o mpc.o lval.o lenv.o builtin.o
+
+builtin.o: builtin.c builtin.h
+	$(CC) $(CFLAGS) -c builtin.c
+
+lval.o: lval.c lval.h
+	$(CC) $(CFLAGS) -c lval.c
+
+lenv.o: lenv.c lenv.h
+	$(CC) $(CFLAGS) -c lenv.c
 
 mpc.o: mpc.c mpc.h
 	$(CC) $(CFLAGS) -c mpc.c
@@ -19,5 +28,6 @@ blisp.o: blisp.c
 	$(CC) $(CFLAGS) -c blisp.c
 
 # Removes the executable, all object files, and all backup files.
+# -f ignores non-existent files so no error messages show up.
 clean:
-	rm blisp *.o *~
+	rm -f blisp *.o *~

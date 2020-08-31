@@ -4,6 +4,10 @@
 *.swo
 
 # Binaries
-parsing
+blisp
 
 parsing.dSYM
+
+*.o
+
+.vscode/
