@@ -101,6 +101,22 @@ lval* builtin_read(lenv* e, lval* a) {
 
 }
 
+// Print a string as it is (unescaped).
+lval* builtin_show(lenv* e, lval* a) {
+
+    // Check for one string argument.
+    lval_check_argcount("show", a, 1);
+    lval_check_type("show", a, 0, LVAL_STR);
+
+    // Print without escaping string.
+    printf("\"%s\"\n", a->cell[0]->str);
+
+    // Delete arguments and return.
+    lval_del(a);
+    return lval_sexpr();
+
+}
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op) {
 

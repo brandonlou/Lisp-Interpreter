@@ -45,6 +45,9 @@ lval* builtin_error(lenv* e, lval* a);
 // Convert a string to a Q-Expression
 lval* builtin_read(lenv* e, lval* a);
 
+// Print a string as it is (unescaped)
+lval* builtin_show(lenv* e, lval* a);
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op);
 
