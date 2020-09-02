@@ -24,13 +24,36 @@ int main(int argc, char** argv) {
               blisp  : /^/ <expr>* /$/ ; \
             ", Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Blisp);
 
+    // Create global environment.
+    lenv* e = lenv_new();
+    lenv_add_builtins(e);
+
+    // If we're supplied with a list of files
+    if(argc >= 2) {
+
+        // Loop over each supplied filename (starting from 1)
+        for(int i = 1; i < argc; ++i) {
+
+            // Argument list with a single argument, the filename
+            lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
+
+            // Pass to builtin load and get the result
+            lval* x = builtin_load(e, args);
+
+            // If the result is an error be sure to print it
+            if(x->type == LVAL_ERR) {
+                lval_println(e, x);
+            }
+
+            lval_del(x);
+
+        }
+    }
+
     // Print version and exit info
     puts("Brandon's Lisp Version 0.0.1");
     puts("hello there 😶");
     puts("Press Ctrl+c to Exit\n");
-
-    lenv* e = lenv_new();
-    lenv_add_builtins(e);
 
     // Infinite prompt
     while(1) {

@@ -3,6 +3,7 @@
 
 #include "lval.h"
 #include "lenv.h"
+#include "mpc.h"
 
 // Report generic conditional checking errors.
 #define lval_assert(args, cond, fmt, ...) \
