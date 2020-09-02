@@ -30,6 +30,11 @@
             "Function '%s' passed {} for argument %i.", \
             name, argnum);
 
+mpc_parser_t* Lispy;
+
+// Load a file.
+lval* builtin_load(lenv* e, lval* a);
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op);
 

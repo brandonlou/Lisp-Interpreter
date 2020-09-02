@@ -1,5 +1,57 @@
 #include "builtin.h"
 
+// Load a file.
+lval* builtin_load(lenv* e, lval* a) {
+
+    lval_check_argcount("load", a, 1);
+    lval_check_type("load", a, 0, LVAL_STR);
+
+    // Parse file given by string name.
+    mpc_result_t r;
+    if(mpc_parse_contents(a->cell[0]->str, Lispy, &r)) {
+
+        // Read contents
+        lval* expr = lval_read(r.output);
+        mpc_ast_delete(r.output);
+
+        // Evaluate each expression
+        while(expr->count) {
+
+            lval* x = lval_eval(e, lval_pop(expr, 0));
+
+            // If evaluation leads to error then print it
+            if(x->type == LVAL_ERR) {
+                lval_println(e, x);
+            }
+
+            lval_del(x);
+
+        }
+
+        // Delete expressions and arguments
+        lval_del(expr);
+        lval_del(a);
+
+        // Return empty list.
+        return lval_sexpr();
+
+    } else {
+
+        // Get parse error as string
+        char* err_msg = mpc_err_string(r.error);
+        mpc_err_delete(r.error);
+
+        // Create new error message using it
+        lval* err = lval_err("Could not load Library %s", err_msg);
+
+        // Cleanup and return error.
+        free(err_msg);
+        lval_del(a);
+        return err;
+
+    }
+}
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op) {
 
