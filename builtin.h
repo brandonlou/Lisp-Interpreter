@@ -36,6 +36,12 @@ mpc_parser_t* Lispy;
 // Load a file.
 lval* builtin_load(lenv* e, lval* a);
 
+// Print values separated by space with a newline at end.
+lval* builtin_print(lenv* e, lval* a);
+
+// Print an error.
+lval* builtin_error(lenv* e, lval* a);
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op);
 

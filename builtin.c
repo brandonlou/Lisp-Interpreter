@@ -52,6 +52,38 @@ lval* builtin_load(lenv* e, lval* a) {
     }
 }
 
+// Print values separated by space with a newline at end.
+lval* builtin_print(lenv* e, lval* a) {
+
+    // Print each argument followed by a space.
+    for(int i = 0; i < a->count; ++i) {
+        lval_print(e, a->cell[i]);
+        putchar(' ');
+    }
+
+    // Print a newline and delete arguments.
+    putchar('\n');
+    lval_del(a);
+
+    return lval_sexpr();
+
+}
+
+// Print an error.
+lval* builtin_error(lenv* e, lval* a) {
+
+    lval_check_argcount("error", a, 1);
+    lval_check_type("error", a, 0, LVAL_STR);
+
+    // Construct error from first argument
+    lval* err = lval_err(a->cell[0]->str);
+
+    // Delete arguments and return.
+    lval_del(a);
+    return err;
+
+}
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op) {
 
