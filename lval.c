@@ -305,6 +305,7 @@ lval* lval_read(mpc_ast_t* t) {
     
     } else if(strstr(t->tag, "string")) {
         return lval_read_str(t);
+    
     }
 
     // If root (>) or sexpr then create empty list
@@ -319,14 +320,19 @@ lval* lval_read(mpc_ast_t* t) {
 
     // Fill this list with any valid expression contained within
     for(int i = 0; i < t->children_num; ++i) {
+
+        // Don't include parenthesis, curly brackets, regex, or comments.
         if(strcmp(t->children[i]->contents, "(") == 0 ||
            strcmp(t->children[i]->contents, ")") == 0 ||
            strcmp(t->children[i]->contents, "{") == 0 ||
            strcmp(t->children[i]->contents, "}") == 0 ||
-           strcmp(t->children[i]->tag, "regex") == 0) {
+           strcmp(t->children[i]->tag, "regex") == 0  ||
+           strstr(t->children[i]->tag, "comment")) {
             continue;
         }
+
         x = lval_add(x, lval_read(t->children[i]));
+
     }
 
     return x;
