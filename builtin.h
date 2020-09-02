@@ -42,6 +42,9 @@ lval* builtin_print(lenv* e, lval* a);
 // Print an error.
 lval* builtin_error(lenv* e, lval* a);
 
+// Convert a string to a Q-Expression
+lval* builtin_read(lenv* e, lval* a);
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op);
 

@@ -84,6 +84,23 @@ lval* builtin_error(lenv* e, lval* a) {
 
 }
 
+// Convert a string to a Q-Expression
+lval* builtin_read(lenv* e, lval* a) {
+
+    // Check for one string argument.
+    lval_check_argcount("read", a, 1);
+    lval_check_type("read", a, 0, LVAL_STR);
+
+    // Create new Q-Expression and add string to it.
+    lval* q = lval_qexpr();
+    lval_add(q, lval_str(a->cell[0]->str));
+
+    // Delete arguments and return.
+    lval_del(a);
+    return q;
+
+}
+
 // Perform a numerical operation on all lvals in the given list.
 lval* builtin_op(lenv* e, lval* a, char* op) {
 
@@ -254,7 +271,7 @@ lval* builtin_eval(lenv* e, lval* a) {
 
 }
 
-// Join 2+ Q-Expressions.
+// Join 2+ Q-Expressions or Strings
 lval* builtin_join(lenv* e, lval* a) {
     
     // Check all arguments are Q-Expressions.

@@ -480,7 +480,7 @@ lval* lval_take(lval* v, int i) {
     
 }
 
-// Join two Q-Expressions.
+// Join two Q-Expressions or Strings.
 lval* lval_join(lval* x, lval* y) {
 
     // For each cell in y add x to it
