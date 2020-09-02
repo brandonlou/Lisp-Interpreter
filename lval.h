@@ -14,6 +14,7 @@ enum lval_type {
     LVAL_ERR, // Errors
     LVAL_NUM, // Numbers
     LVAL_SYM, // Symbols (variable names, function names, etc.)
+    LVAL_STR,
     LVAL_FUN, // Functions
     LVAL_SEXPR, // Symbolic expresisons
     LVAL_QEXPR // Quoted expressions
@@ -31,6 +32,7 @@ struct lval {
     double num;
     char* err;
     char* sym;
+    char* str;
 
     // Function
     lbuiltin builtin;
@@ -53,6 +55,9 @@ lval* lval_err(char* fmt, ...);
 
 // Construct a pointer to a new Symbol lval
 lval* lval_sym(char* s);
+
+// Construct a pointer to a new String lval
+lval* lval_str(char* s);
 
 // Construct a pointer to a new built-in Function lval
 lval* lval_fun(lbuiltin func);
@@ -86,6 +91,9 @@ void lval_expr_print(lenv* e, lval* v, char open, char close);
 
 // Print a Function type lval.
 void lval_func_print(lenv* e, lval* v);
+
+// Print a String type lval.
+void lval_print_str(lval* v);
 
 // Print an lval.
 void lval_print(lenv* e, lval* v);

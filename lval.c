@@ -12,6 +12,8 @@ char* ltype_name(enum lval_type type) {
             return "Error";
         case LVAL_SYM:
             return "Symbol";
+        case LVAL_STR:
+            return "String";
         case LVAL_SEXPR:
             return "S-Expression";
         case LVAL_QEXPR:
@@ -66,6 +68,18 @@ lval* lval_sym(char* s) {
     v->type = LVAL_SYM;
     v->sym = malloc(strlen(s) + 1);
     strcpy(v->sym, s);
+
+    return v;
+
+}
+
+// Construct a pointer to a new String lval
+lval* lval_str(char* s) {
+
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_STR;
+    v->str = malloc(strlen(s) + 1);
+    strcpy(v->str, s);
 
     return v;
 
@@ -163,6 +177,11 @@ lval* lval_copy(lval* v) {
             strcpy(x->sym, v->sym);
             break;
 
+        case LVAL_STR:
+            x->str = malloc(strlen(v->str) + 1);
+            strcpy(x->str, v->str);
+            break;
+
         // Copy Lists by copying each sub-expression
         case LVAL_SEXPR:
         case LVAL_QEXPR:
@@ -185,6 +204,7 @@ lval* lval_copy(lval* v) {
 void lval_del(lval* v) {
 
     switch(v->type) {
+
         // Delete internals if user defined function
         case LVAL_FUN:
             if(!v->builtin) {
@@ -194,12 +214,17 @@ void lval_del(lval* v) {
             }
             break;
         
-        // For Errors and Symbols free the allocated string
+        // For string based types, free the allocated string.
         case LVAL_ERR:
             free(v->err);
             break;
+
         case LVAL_SYM:
             free(v->sym);
+            break;
+
+        case LVAL_STR:
+            free(v->str);
             break;
 
         // For Sexpr and Qexpr, recursively delete all the elements inside
@@ -331,6 +356,24 @@ void lval_func_print(lenv* e, lval* v) {
 
 }
 
+// Print a String type lval.
+void lval_print_str(lval* v) {
+
+    // Make a copy of the string.
+    char* escaped = malloc(strlen(v->str) + 1);
+    strcpy(escaped, v->str);
+
+    // Pass it through the escape function.
+    escaped = mpcf_escape(escaped);
+
+    // Print it between " characters.
+    printf("\"%s\"", escaped);
+
+    // Free the copied string.
+    free(escaped);
+
+}
+
 // Print an lval.
 void lval_print(lenv* e, lval* v) {
 
@@ -345,6 +388,10 @@ void lval_print(lenv* e, lval* v) {
         
         case LVAL_SYM:
             printf("%s", v->sym);
+            break;
+
+        case LVAL_STR:
+            lval_print_str(v);
             break;
 
         case LVAL_FUN:
@@ -424,7 +471,7 @@ lval* lval_eval(lenv* e, lval* v) {
         lval* x = lenv_get(e, v);
         lval_del(v); // Environment already returns copy of v
         return x;
-    } 
+    }
 
     // Evaluate s-expressions.
     else if(v->type == LVAL_SEXPR) {
