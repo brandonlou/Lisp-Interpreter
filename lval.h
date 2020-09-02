@@ -83,6 +83,9 @@ lval* lval_add(lval* v, lval* x);
 // Convert an AST number to an lval number and check for error.
 lval* lval_read_num(mpc_ast_t* t);
 
+// Convert escaped string to unescaped form.
+lval* lval_read_str(mpc_ast_t* t);
+
 // Convert AST to S-Expression.
 lval* lval_read(mpc_ast_t* t);
 

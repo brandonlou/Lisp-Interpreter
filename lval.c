@@ -271,6 +271,28 @@ lval* lval_read_num(mpc_ast_t* t) {
 
 }
 
+// Convert escaped string to unescaped form.
+lval* lval_read_str(mpc_ast_t* t) {
+
+    // Cut off final quote character.
+    t->contents[strlen(t->contents) - 1] = '\0';
+
+    // Copy string missing out the first quote character.
+    char* unescaped = malloc(strlen(t->contents + 1) + 1);
+    strcpy(unescaped, t->contents + 1);
+
+    // Pass through the unescape function.
+    unescaped = mpcf_unescape(unescaped);
+
+    // Construct a new lval using the string.
+    lval* str = lval_str(unescaped);
+
+    // Free the string and return.
+    free(unescaped);
+    return str;
+    
+}
+
 // Convert AST to S-Expression.
 lval* lval_read(mpc_ast_t* t) {
 
@@ -280,6 +302,9 @@ lval* lval_read(mpc_ast_t* t) {
 
     } else if(strstr(t->tag, "symbol")) {
         return lval_sym(t->contents);
+    
+    } else if(strstr(t->tag, "string")) {
+        return lval_read_str(t);
     }
 
     // If root (>) or sexpr then create empty list
