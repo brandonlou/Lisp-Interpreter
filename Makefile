@@ -26,7 +26,7 @@ lenv.o: lenv.c lenv.h
 mpc.o: mpc.c mpc.h
 	$(CC) $(CFLAGS) -c mpc.c
 
-blisp.o: blisp.c
+blisp.o: blisp.c blisp.h
 	$(CC) $(CFLAGS) -c blisp.c
 
 # Removes the executable, all object files, and all backup files.
