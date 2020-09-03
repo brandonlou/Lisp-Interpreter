@@ -164,6 +164,9 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "||", builtin_or);
     lenv_add_builtin(e, "&&", builtin_and);
     lenv_add_builtin(e, "!", builtin_not);
+    lenv_add_builtin(e, "or", builtin_or);
+    lenv_add_builtin(e, "and", builtin_and);
+    lenv_add_builtin(e, "not", builtin_not);
 
     // Variable functions
     lenv_add_builtin(e, "def", builtin_def);
