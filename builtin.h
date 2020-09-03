@@ -102,6 +102,9 @@ lval* builtin_and(lenv* e, lval* a);
 // "!" logical comparision.
 lval* builtin_not(lenv* e, lval* a);
 
+// Handles boolean logic.
+lval* builtin_logical(lenv* e, lval* a, char* op);
+
 // Handles all boolean comparisons
 lval* builtin_compare(lenv* e, lval* a, char* op);
 

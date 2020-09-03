@@ -259,36 +259,60 @@ lval* builtin_not_equal(lenv* e, lval* a) {
 
 // "||" logical comparision.
 lval* builtin_or(lenv* e, lval* a) {
-    return builtin_compare(e, a, "||");
+    return builtin_logical(e, a, "||");
 }
 
 // "&&" logical comparision.
 lval* builtin_and(lenv* e, lval* a) {
-    return builtin_compare(e, a, "&&");
+    return builtin_logical(e, a, "&&");
 }
 
 // "!" logical comparision.
 lval* builtin_not(lenv* e, lval* a) {
 
-    // Check for one Number type argument.
+    // Check for one Boolean type argument.
     lval_check_argcount("!", a, 1);
-    lval_check_type("!", a, 0, LVAL_NUM);
+    lval_check_type("!", a, 0, LVAL_BOOL);
 
-    lval* result = lval_num(!a->cell[0]->num);
+    lval* result = lval_bool(!a->cell[0]->val);
     
     lval_del(a);
     return result;
     
 }
 
-// Handles all boolean comparisons.
+// Handles boolean logic.
+lval* builtin_logical(lenv* e, lval* a, char* op) {
+
+    // Check for two boolean arguments.
+    lval_check_argcount(op, a, 2);
+    lval_check_type(op, a, 0, LVAL_BOOL);
+    lval_check_type(op, a, 1, LVAL_BOOL);
+
+    bool result = false;
+    bool first_bool = a->cell[0]->val;
+    bool second_bool = a->cell[1]->val;
+
+    if(strcmp(op, "||") == 0) {
+        result = (first_bool || second_bool);
+
+    } else if(strcmp(op, "&&") == 0) {
+        result = (first_bool && second_bool);
+    }
+
+    lval_del(a);
+    return lval_bool(result);
+
+}
+
+// Handles all numerical and type comparisons.
 lval* builtin_compare(lenv* e, lval* a, char* op) {
 
     // Check for two arguments.
     lval_check_argcount(op, a, 2);
 
     // Represents true (1) or false (0).
-    int condition = 0;
+    bool condition = false;
 
     if(strcmp(op, "==") == 0) {
         condition = lval_eq(a->cell[0], a->cell[1]);
@@ -316,17 +340,11 @@ lval* builtin_compare(lenv* e, lval* a, char* op) {
 
         } else if(strcmp(op, "<=") == 0) {
             condition = (first_num <= second_num);
-
-        } else if(strcmp(op, "||") == 0) {
-            condition = (first_num || second_num);
-
-        } else if(strcmp(op, "&&") == 0) {
-            condition = (first_num && second_num);
         }
     }
 
     lval_del(a);
-    return lval_num(condition);
+    return lval_bool(condition);
 
 }
 
@@ -574,7 +592,7 @@ lval* builtin_if(lenv* e, lval* a) {
 
     // Check for correct argument count and types.
     lval_check_argcount("if", a, 3);
-    lval_check_type("if", a, 0, LVAL_NUM);
+    lval_check_type("if", a, 0, LVAL_BOOL);
     lval_check_type("if", a, 1, LVAL_QEXPR);
     lval_check_type("if", a, 1, LVAL_QEXPR);
 
@@ -585,7 +603,7 @@ lval* builtin_if(lenv* e, lval* a) {
     a->cell[2]->type = LVAL_SEXPR;
 
     // If condition is true, evaluate first expression.
-    if(a->cell[0]->num) {
+    if(a->cell[0]->val) {
         result = lval_eval(e, lval_pop(a, 1));
 
     // Otherwise evaluate second expression.

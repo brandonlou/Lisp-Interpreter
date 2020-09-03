@@ -2,6 +2,7 @@
 #define LVAL_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,8 +14,9 @@
 enum lval_type {
     LVAL_ERR, // Errors
     LVAL_NUM, // Numbers
+    LVAL_BOOL, // Booleans
     LVAL_SYM, // Symbols (variable names, function names, etc.)
-    LVAL_STR,
+    LVAL_STR, // Strings
     LVAL_FUN, // Functions
     LVAL_SEXPR, // Symbolic expresisons
     LVAL_QEXPR // Quoted expressions
@@ -30,6 +32,7 @@ struct lval {
 
     // Basic
     double num;
+    bool val;
     char* err;
     char* sym;
     char* str;
@@ -49,6 +52,9 @@ struct lval {
 
 // Construct a pointer to a new Number lval
 lval* lval_num(double x);
+
+// Construct a pointer to a new Boolean lval.
+lval* lval_bool(bool x);
 
 // Construct a pointer to a new Error lval
 lval* lval_err(char* fmt, ...);
@@ -123,6 +129,6 @@ lval* lval_eval_sexpr(lenv* e, lval* v);
 lval* lval_call(lenv* e, lval* f, lval* a);
 
 // Checks if two lvals are equal
-int lval_eq(lval* x, lval* y);
+bool lval_eq(lval* x, lval* y);
 
 #endif

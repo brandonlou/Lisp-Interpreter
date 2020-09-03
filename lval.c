@@ -8,6 +8,8 @@ char* ltype_name(enum lval_type type) {
             return "Function";
         case LVAL_NUM:
             return "Number";
+        case LVAL_BOOL:
+            return "Boolean";
         case LVAL_ERR:
             return "Error";
         case LVAL_SYM:
@@ -30,6 +32,17 @@ lval* lval_num(double x) {
     lval* v = malloc(sizeof(lval));
     v->type = LVAL_NUM;
     v->num = x;
+
+    return v;
+
+}
+
+// Construct a pointer to a new Boolean lval.
+lval* lval_bool(bool x) {
+
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_BOOL;
+    v->val = x;
 
     return v;
 
@@ -166,6 +179,10 @@ lval* lval_copy(lval* v) {
             x->num = v->num;
             break;
 
+        case LVAL_BOOL:
+            x->val = v->val;
+            break;
+
         // Copy Strings using malloc and strcpy
         case LVAL_ERR:
             x->err = malloc(strlen(v->err) + 1);
@@ -239,8 +256,9 @@ void lval_del(lval* v) {
             free(v->cell);
             break;
 
-        // Do nothing special for Number types.
+        // Do nothing special for Number and Boolean types.
         case LVAL_NUM:
+        case LVAL_BOOL:
         default:
             break;
     }
@@ -299,6 +317,9 @@ lval* lval_read(mpc_ast_t* t) {
     // If Symbol or Number, return conversion to that type
     if(strstr(t->tag, "number")) {
         return lval_read_num(t);
+
+    } else if(strstr(t->tag, "boolean")) {
+        return lval_bool(!strcmp(t->contents, "true")? true : false);
 
     } else if(strstr(t->tag, "symbol")) {
         return lval_sym(t->contents);
@@ -411,6 +432,10 @@ void lval_print(lenv* e, lval* v) {
     switch(v->type) {
         case LVAL_NUM:
             printf("%g", v->num);
+            break;
+
+        case LVAL_BOOL:
+            printf((v->val)? "true" : "false");
             break;
         
         case LVAL_ERR:
@@ -653,7 +678,7 @@ lval* lval_call(lenv* e, lval* f, lval* a) {
 }
 
 // Checks if two lvals are equal
-int lval_eq(lval* x, lval* y) {
+bool lval_eq(lval* x, lval* y) {
 
     // Different types are always unequal.
     if(x->type != y->type) {
@@ -665,6 +690,9 @@ int lval_eq(lval* x, lval* y) {
 
         case LVAL_NUM:
             return (x->num == y->num);
+
+        case LVAL_BOOL:
+            return (x->val == y->val);
             
         case LVAL_ERR:
             return (strcmp(x->err, y->err) == 0);
@@ -692,21 +720,21 @@ int lval_eq(lval* x, lval* y) {
 
             // Number of elements in both lists must be equal.
             if(x->count != y->count) {
-                return 0;
+                return false;
             }
 
             // If any element is not equal then the whole list is not equal.
             for(int i = 0; i < x->count; ++i) {
                 if(!lval_eq(x->cell[i], y->cell[i])) {
-                    return 0;
+                    return false;
                 }
             }
 
             // Otherwise lists must be equal.
-            return 1;
+            return true;
 
         default:
-            return 0;
+            return false;
 
     }
 
