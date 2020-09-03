@@ -257,6 +257,30 @@ lval* builtin_not_equal(lenv* e, lval* a) {
     return builtin_compare(e, a, "!=");
 }
 
+// "||" logical comparision.
+lval* builtin_or(lenv* e, lval* a) {
+    return builtin_compare(e, a, "||");
+}
+
+// "&&" logical comparision.
+lval* builtin_and(lenv* e, lval* a) {
+    return builtin_compare(e, a, "&&");
+}
+
+// "!" logical comparision.
+lval* builtin_not(lenv* e, lval* a) {
+
+    // Check for one Number type argument.
+    lval_check_argcount("!", a, 1);
+    lval_check_type("!", a, 0, LVAL_NUM);
+
+    lval* result = lval_num(!a->cell[0]->num);
+    
+    lval_del(a);
+    return result;
+    
+}
+
 // Handles all boolean comparisons.
 lval* builtin_compare(lenv* e, lval* a, char* op) {
 
@@ -293,6 +317,11 @@ lval* builtin_compare(lenv* e, lval* a, char* op) {
         } else if(strcmp(op, "<=") == 0) {
             condition = (first_num <= second_num);
 
+        } else if(strcmp(op, "||") == 0) {
+            condition = (first_num || second_num);
+
+        } else if(strcmp(op, "&&") == 0) {
+            condition = (first_num && second_num);
         }
     }
 

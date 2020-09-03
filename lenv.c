@@ -160,6 +160,11 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "==", builtin_equal);
     lenv_add_builtin(e, "!=", builtin_not_equal);
 
+    // Logical functions
+    lenv_add_builtin(e, "||", builtin_or);
+    lenv_add_builtin(e, "&&", builtin_and);
+    lenv_add_builtin(e, "!", builtin_not);
+
     // Variable functions
     lenv_add_builtin(e, "def", builtin_def);
     lenv_add_builtin(e, "=", builtin_put);
