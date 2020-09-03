@@ -122,4 +122,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v);
 // Calls a built-in or user-defined function.
 lval* lval_call(lenv* e, lval* f, lval* a);
 
+// Checks if two lvals are equal
+int lval_eq(lval* x, lval* y);
+
 #endif

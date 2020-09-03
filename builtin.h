@@ -75,6 +75,27 @@ lval* builtin_min(lenv* e, lval* a);
 // Return the maximum of numbers.
 lval* builtin_max(lenv* e, lval* a);
 
+// ">" boolean comparison
+lval* builtin_greater(lenv* e, lval* a);
+
+// "<" boolean comparison
+lval* builtin_less(lenv* e, lval* a);
+
+// ">=" boolean comparision.
+lval* builtin_greater_or_equal(lenv* e, lval* a);
+
+// "<=" boolean comparision.
+lval* builtin_less_or_equal(lenv* e, lval* a);
+
+// "==" boolean comparison
+lval* builtin_equal(lenv* e, lval* a);
+
+// "!=" boolean comparison
+lval* builtin_not_equal(lenv* e, lval* a);
+
+// Handles all boolean comparisons
+lval* builtin_compare(lenv* e, lval* a, char* op);
+
 // Take a Q-Expression and return a Q-Expression containing only the first element.
 lval* builtin_head(lenv* e, lval* a);
 
@@ -118,5 +139,8 @@ lval* builtin_put(lenv* e, lval* a);
 
 // Create a lambda function given a list of symbols and a list represneting the body.
 lval* builtin_lambda(lenv* e, lval* a);
+
+// If conditional
+lval* builtin_if(lenv* e, lval* a);
 
 #endif

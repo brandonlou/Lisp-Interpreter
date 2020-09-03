@@ -227,6 +227,80 @@ lval* builtin_max(lenv* e, lval* a) {
     return builtin_op(e, a, "max");
 }
 
+// ">" boolean comparison
+lval* builtin_greater(lenv* e, lval* a) {
+    return builtin_compare(e, a, ">");
+}
+
+// "<" boolean comparison
+lval* builtin_less(lenv* e, lval* a) {
+    return builtin_compare(e, a, "<");
+}
+
+// ">=" boolean comparision.
+lval* builtin_greater_or_equal(lenv* e, lval* a) {
+    return builtin_compare(e, a, ">=");
+}
+
+// "<=" boolean comparision.
+lval* builtin_less_or_equal(lenv* e, lval* a) {
+    return builtin_compare(e, a, "<=");
+}
+
+// "==" boolean comparison
+lval* builtin_equal(lenv* e, lval* a) {
+    return builtin_compare(e, a, "==");
+}
+
+// "!=" boolean comparison
+lval* builtin_not_equal(lenv* e, lval* a) {
+    return builtin_compare(e, a, "!=");
+}
+
+// Handles all boolean comparisons.
+lval* builtin_compare(lenv* e, lval* a, char* op) {
+
+    // Check for two arguments.
+    lval_check_argcount(op, a, 2);
+
+    // Represents true (1) or false (0).
+    int condition = 0;
+
+    if(strcmp(op, "==") == 0) {
+        condition = lval_eq(a->cell[0], a->cell[1]);
+
+    } else if(strcmp(op, "!=") == 0) {
+        condition = !lval_eq(a->cell[0], a->cell[1]);
+
+    } else {
+
+        // Check both arguments are Number types.
+        lval_check_type(op, a, 0, LVAL_NUM);
+        lval_check_type(op, a, 1, LVAL_NUM);
+
+        double first_num = a->cell[0]->num;
+        double second_num = a->cell[1]->num;
+
+        if(strcmp(op, ">") == 0) {
+            condition = (first_num > second_num);
+
+        } else if(strcmp(op, "<") == 0) {
+            condition = (first_num < second_num);
+
+        } else if(strcmp(op, ">=") == 0) {
+            condition = (first_num >= second_num);
+
+        } else if(strcmp(op, "<=") == 0) {
+            condition = (first_num <= second_num);
+
+        }
+    }
+
+    lval_del(a);
+    return lval_num(condition);
+
+}
+
 // Take a Q-Expression and return a Q-Expression containing only the first element.
 lval* builtin_head(lenv* e, lval* a) {
 

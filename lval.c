@@ -1,6 +1,6 @@
 #include "lval.h"
 
-// Returns string representation of type
+// Returns string representation of type.
 char* ltype_name(enum lval_type type) {
 
     switch(type) {
@@ -24,7 +24,7 @@ char* ltype_name(enum lval_type type) {
 
 }
 
-// Construct a pointer to a new Number lval
+// Construct a pointer to a new Number lval.
 lval* lval_num(double x) {
 
     lval* v = malloc(sizeof(lval));
@@ -116,7 +116,7 @@ lval* lval_lambda(lval* formals, lval* body) {
 
 }
 
-// Construct a pointer to a new emtpy S-Expression lval
+// Construct a pointer to a new emtpy S-Expression lval.
 lval* lval_sexpr(void) {
 
     lval* v = malloc(sizeof(lval));
@@ -128,7 +128,7 @@ lval* lval_sexpr(void) {
 
 }
 
-// Construct a pointer to a new empty Q-Expression lval
+// Construct a pointer to a new empty Q-Expression lval.
 lval* lval_qexpr(void) {
 
     lval* v = malloc(sizeof(lval));
@@ -140,7 +140,7 @@ lval* lval_qexpr(void) {
 
 }
 
-// Copy an lval (useful when putting things in/out of the environment)
+// Copy an lval (useful when putting things in/out of the environment).
 lval* lval_copy(lval* v) {
     
     lval* x = malloc(sizeof(lval));
@@ -648,6 +648,66 @@ lval* lval_call(lenv* e, lval* f, lval* a) {
     // Otherwise, return partially evaluated function.
     } else {
         return lval_copy(f);
+    }
+
+}
+
+// Checks if two lvals are equal
+int lval_eq(lval* x, lval* y) {
+
+    // Different types are always unequal.
+    if(x->type != y->type) {
+        return 0;
+    }
+
+    // Compare based upon type
+    switch(x->type) {
+
+        case LVAL_NUM:
+            return (x->num == y->num);
+            
+        case LVAL_ERR:
+            return (strcmp(x->err, y->err) == 0);
+        
+        case LVAL_SYM:
+            return (strcmp(x->sym, y->sym) == 0);
+
+        case LVAL_STR:
+            return (strcmp(x->str, y->str) == 0);
+
+        case LVAL_FUN:
+
+            // Compare builtin function pointers are equal.
+            if(x->builtin || y->builtin) {
+                return (x->builtin == y->builtin);
+            
+            // Compare user-defined function parameters and body are equal.
+            } else {
+                return lval_eq(x->formals, y->formals) && lval_eq(x->body, y->body);
+            }
+
+        // If List type, compare every individual element
+        case LVAL_SEXPR:
+        case LVAL_QEXPR:
+
+            // Number of elements in both lists must be equal.
+            if(x->count != y->count) {
+                return 0;
+            }
+
+            // If any element is not equal then the whole list is not equal.
+            for(int i = 0; i < x->count; ++i) {
+                if(!lval_eq(x->cell[i], y->cell[i])) {
+                    return 0;
+                }
+            }
+
+            // Otherwise lists must be equal.
+            return 1;
+
+        default:
+            return 0;
+
     }
 
 }
