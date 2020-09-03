@@ -152,6 +152,7 @@ void lenv_add_builtins(lenv* e) {
     lenv_add_builtin(e, "max", builtin_max);
 
     // Comparision functions
+    lenv_add_builtin(e, "if", builtin_if);
     lenv_add_builtin(e, ">", builtin_greater);
     lenv_add_builtin(e, "<", builtin_less);
     lenv_add_builtin(e, ">=", builtin_greater_or_equal);

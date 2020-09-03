@@ -539,3 +539,33 @@ lval* builtin_lambda(lenv* e, lval* a) {
     return lval_lambda(formals, body);
 
 }
+
+// If conditional
+lval* builtin_if(lenv* e, lval* a) {
+
+    // Check for correct argument count and types.
+    lval_check_argcount("if", a, 3);
+    lval_check_type("if", a, 0, LVAL_NUM);
+    lval_check_type("if", a, 1, LVAL_QEXPR);
+    lval_check_type("if", a, 1, LVAL_QEXPR);
+
+    lval* result;
+
+    // Mark both Q-Expressions as evaluable.
+    a->cell[1]->type = LVAL_SEXPR;
+    a->cell[2]->type = LVAL_SEXPR;
+
+    // If condition is true, evaluate first expression.
+    if(a->cell[0]->num) {
+        result = lval_eval(e, lval_pop(a, 1));
+
+    // Otherwise evaluate second expression.
+    } else {
+        result = lval_eval(e, lval_pop(a, 2));
+    }
+
+    // Delete argument list and return.
+    lval_del(a);
+    return result;
+
+}
