@@ -3,15 +3,15 @@
 int main(int argc, char** argv) {
 
     // Create some parsers
-    mpc_parser_t* Number = mpc_new("number");
-    mpc_parser_t* Boolean = mpc_new("boolean");
-    mpc_parser_t* Symbol = mpc_new("symbol");
-    mpc_parser_t* String = mpc_new("string");
-    mpc_parser_t* Comment = mpc_new("comment");
-    mpc_parser_t* Sexpr = mpc_new("sexpr");
-    mpc_parser_t* Qexpr = mpc_new("qexpr");
-    mpc_parser_t* Expr = mpc_new("expr");
-    mpc_parser_t* Blisp = mpc_new("blisp");
+    Number = mpc_new("number");
+    Boolean = mpc_new("boolean");
+    Symbol = mpc_new("symbol");
+    String = mpc_new("string");
+    Comment = mpc_new("comment");
+    Sexpr = mpc_new("sexpr");
+    Qexpr = mpc_new("qexpr");
+    Expr = mpc_new("expr");
+    Blisp = mpc_new("blisp");
 
     // Define the parsers with the following language
     mpca_lang(MPCA_LANG_DEFAULT,

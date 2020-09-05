@@ -3,6 +3,7 @@
 
 #include "lenv.h"
 #include "lval.h"
+#include "mpc.h"
 
 // If compiling on Windows then include these functions
 #ifdef _WIN32
@@ -27,5 +28,17 @@ void add_history(char* unused) {}
 #else
 #include <editline/readline.h>
 #endif
+
+
+// Parser declarations.
+mpc_parser_t* Number;
+mpc_parser_t* Boolean;
+mpc_parser_t* Symbol;
+mpc_parser_t* String;
+mpc_parser_t* Comment;
+mpc_parser_t* Sexpr;
+mpc_parser_t* Qexpr;
+mpc_parser_t* Expr;
+mpc_parser_t* Blisp;
 
 #endif

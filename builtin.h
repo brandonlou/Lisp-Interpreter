@@ -1,6 +1,7 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
 
+#include "blisp.h"
 #include "lval.h"
 #include "lenv.h"
 #include "mpc.h"
@@ -30,8 +31,6 @@
     lval_assert(args, a->cell[argnum]->count != 0, \
             "Function '%s' passed {} for argument %i.", \
             name, argnum);
-
-mpc_parser_t* Lispy;
 
 // Load a file.
 lval* builtin_load(lenv* e, lval* a);

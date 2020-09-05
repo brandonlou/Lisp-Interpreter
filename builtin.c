@@ -8,7 +8,7 @@ lval* builtin_load(lenv* e, lval* a) {
 
     // Parse file given by string name.
     mpc_result_t r;
-    if(mpc_parse_contents(a->cell[0]->str, Lispy, &r)) {
+    if(mpc_parse_contents(a->cell[0]->str, Blisp, &r)) {
 
         // Read contents
         lval* expr = lval_read(r.output);

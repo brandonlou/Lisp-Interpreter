@@ -2,7 +2,7 @@
 CC = cc
 
 # Extra flags to give to C compiler.
-CFLAGS = -std=c99 -Wall
+CFLAGS = -std=c99 -Wall -g3
 
 # Extra flags for compiler before invoking the linker.
 LDFLAGS = -ledit -lm

@@ -1,0 +1,13 @@
+; The Blisp Standard Library
+; This is a collection of common functions for the programmer's convenience.
+; But really, why would you use this language 🍰
+
+; Easily define functions
+def {fun} (\ {args body} {def (head args) (\ (tail args) body)})
+
+; Curry function
+fun {curry f xs} {eval (join (list f) xs)}
+
+; Uncurry function
+fun {uncurry f & xs} {f xs}
+
