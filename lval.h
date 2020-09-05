@@ -19,7 +19,8 @@ enum lval_type {
     LVAL_STR, // Strings
     LVAL_FUN, // Functions
     LVAL_SEXPR, // Symbolic expresisons
-    LVAL_QEXPR // Quoted expressions
+    LVAL_QEXPR, // Quoted expressions
+    LVAL_OKAY // Acknowledgement that an expression evaluated without error.
 };
 
 // Returns string representation of lisp type.
@@ -76,6 +77,9 @@ lval* lval_sexpr(void);
 
 // Construct a pointer to a new empty Qexpr lval
 lval* lval_qexpr(void);
+
+// Construct a pointer to a new Okay lval.
+lval* lval_okay(void);
 
 // Copy an lval (useful when putting things in/out of the environment)
 lval* lval_copy(lval* v);

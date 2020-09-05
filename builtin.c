@@ -32,8 +32,8 @@ lval* builtin_load(lenv* e, lval* a) {
         lval_del(expr);
         lval_del(a);
 
-        // Return empty list.
-        return lval_sexpr();
+        // Return success.
+        return lval_okay();
 
     } else {
 
@@ -65,7 +65,7 @@ lval* builtin_print(lenv* e, lval* a) {
     putchar('\n');
     lval_del(a);
 
-    return lval_sexpr();
+    return lval_okay();
 
 }
 
@@ -113,7 +113,7 @@ lval* builtin_show(lenv* e, lval* a) {
 
     // Delete arguments and return.
     lval_del(a);
-    return lval_sexpr();
+    return lval_okay();
 
 }
 
@@ -551,7 +551,7 @@ lval* builtin_var(lenv* e, lval* a, char* name) {
     }
 
     lval_del(a);
-    return lval_sexpr();
+    return lval_okay();
 
 }
 

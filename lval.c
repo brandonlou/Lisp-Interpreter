@@ -20,6 +20,8 @@ char* ltype_name(enum lval_type type) {
             return "S-Expression";
         case LVAL_QEXPR:
             return "Q-Expression";
+        case LVAL_OKAY:
+            return "OKAY";
         default:
             return "Unknown";
     }
@@ -153,6 +155,16 @@ lval* lval_qexpr(void) {
 
 }
 
+// Construct a pointer to a new Okay lval.
+lval* lval_okay(void) {
+
+    lval* v = malloc(sizeof(lval));
+    v->type = LVAL_OKAY;
+
+    return v;
+
+}
+
 // Copy an lval (useful when putting things in/out of the environment).
 lval* lval_copy(lval* v) {
     
@@ -209,6 +221,8 @@ lval* lval_copy(lval* v) {
             }
             break;
 
+        // Nothing to copy for Okay types.
+        case LVAL_OKAY:
         default:
             break;
     }
@@ -256,9 +270,10 @@ void lval_del(lval* v) {
             free(v->cell);
             break;
 
-        // Do nothing special for Number and Boolean types.
+        // These types have no allocated memory to take care of.
         case LVAL_NUM:
         case LVAL_BOOL:
+        case LVAL_OKAY:
         default:
             break;
     }
@@ -461,7 +476,9 @@ void lval_print(lenv* e, lval* v) {
         case LVAL_QEXPR:
             lval_expr_print(e, v, '{', '}');
             break;
-        
+
+        // Don't print anything for Okay type.
+        case LVAL_OKAY:        
         default:
             break;
     }
@@ -731,6 +748,10 @@ bool lval_eq(lval* x, lval* y) {
             }
 
             // Otherwise lists must be equal.
+            return true;
+
+        // Okay types are always equal since they contain no special data.
+        case LVAL_OKAY:
             return true;
 
         default:
